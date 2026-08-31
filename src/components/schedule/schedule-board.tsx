@@ -4,14 +4,17 @@ import {
   DragOverlay,
   KeyboardSensor,
   PointerSensor,
+  pointerWithin,
+  rectIntersection,
   useDroppable,
   useSensor,
   useSensors,
+  type CollisionDetection,
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
 import { addWeeks, format } from "date-fns";
-import { ChevronLeft, ChevronRight, Search, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Palette, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,8 +28,9 @@ import {
 import { cn } from "@/lib/utils";
 import { useSchedule } from "@/context/schedule-context";
 import {
-  PROGRAMS,
   STAFF_ROLES,
+  blockStyle,
+  chipStyle,
   dateKey,
   programById,
   weekDays,
@@ -38,23 +42,40 @@ import {
 import { StaffCard } from "./staff-card";
 import { WeekGrid } from "./week-grid";
 import { ShiftDialog } from "./shift-dialog";
+import { NewShiftDialog, type NewShiftTarget } from "./new-shift-dialog";
+import { ProgramsDialog } from "./programs-dialog";
+
+/** Prefer an unassigned shift slot under the pointer over its parent cell. */
+const collisionDetection: CollisionDetection = (args) => {
+  const pointer = pointerWithin(args);
+  const collisions = pointer.length > 0 ? pointer : rectIntersection(args);
+  const slot = collisions.find((c) => String(c.id).startsWith("slot:"));
+  return slot ? [slot] : collisions;
+};
 
 export function ScheduleBoard() {
-  const { staff, shifts, conflictIds, addShift, moveShift, updateShift } = useSchedule();
+  const { staff, programs, shifts, conflictIds, addShift, moveShift, updateShift } = useSchedule();
   const [anchor, setAnchor] = useState(() => weekStart(new Date()));
   const [query, setQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
-  const [program, setProgram] = useState<ProgramId>("canoe-kids");
+  const [program, setProgram] = useState<ProgramId>(programs[0]?.id ?? "");
   const [editing, setEditing] = useState<Shift | null>(null);
+  const [creating, setCreating] = useState<NewShiftTarget | null>(null);
+  const [managing, setManaging] = useState(false);
   const [dragLabel, setDragLabel] = useState<string | null>(null);
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }), useSensor(KeyboardSensor));
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor),
+  );
   const days = useMemo(() => weekDays(anchor), [anchor]);
   const dayKeys = useMemo(() => days.map(dateKey), [days]);
   const weekShifts = useMemo(
     () => shifts.filter((s) => dayKeys.includes(s.date)),
     [shifts, dayKeys],
   );
+
+  const activeProgram = programs.some((p) => p.id === program) ? program : (programs[0]?.id ?? "");
 
   const filteredStaff = staff.filter(
     (s) =>
@@ -91,6 +112,7 @@ export function ScheduleBoard() {
       | undefined;
     const target = over.data.current as
       | { type: "cell"; date: string; block: BlockId }
+      | { type: "slot"; shiftId: string }
       | { type: "unassign" }
       | undefined;
     if (!from || !target) return;
@@ -103,8 +125,29 @@ export function ScheduleBoard() {
       return;
     }
 
+    if (target.type === "slot") {
+      if (from.type !== "staff") return;
+      const slot = shifts.find((s) => s.id === target.shiftId);
+      const person = staff.find((s) => s.id === from.staffId);
+      if (slot?.requiredRole && person && person.role !== slot.requiredRole) {
+        toast.warning(`${person.name} is a ${person.role}, this slot asks for a ${slot.requiredRole}.`);
+      }
+      updateShift(target.shiftId, { staffId: from.staffId });
+      toast.success(`${person?.name ?? "Staff"} filled an open shift`);
+      return;
+    }
+
     if (from.type === "staff") {
-      addShift({ date: target.date, block: target.block, program, staffId: from.staffId });
+      if (!activeProgram) {
+        toast.error("Create a program first.");
+        return;
+      }
+      addShift({
+        date: target.date,
+        block: target.block,
+        program: activeProgram,
+        staffId: from.staffId,
+      });
       toast.success(`${staff.find((s) => s.id === from.staffId)?.name} scheduled`);
     } else {
       moveShift(from.shiftId, target.date, target.block);
@@ -115,6 +158,7 @@ export function ScheduleBoard() {
     <DndContext
       id="schedule-dnd"
       sensors={sensors}
+      collisionDetection={collisionDetection}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       onDragCancel={() => setDragLabel(null)}
@@ -125,7 +169,7 @@ export function ScheduleBoard() {
             <div>
               <h2 className="text-sm font-semibold text-foreground">Staff</h2>
               <p className="text-xs text-muted-foreground">
-                Drag a card onto a day to schedule it.
+                Drag onto an open shift to fill it, or onto a cell to create one.
               </p>
             </div>
 
@@ -210,15 +254,18 @@ export function ScheduleBoard() {
             <h1 className="text-base font-semibold text-foreground">
               {format(days[0] ?? anchor, "MMM d")} – {format(days[6] ?? anchor, "MMM d, yyyy")}
             </h1>
+            <Button variant="outline" size="sm" onClick={() => setManaging(true)}>
+              <Palette className="size-4" /> Manage programs
+            </Button>
 
             <div className="ml-auto flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">New shifts:</span>
-              <Select value={program} onValueChange={(v) => setProgram(v as ProgramId)}>
+              <span className="text-xs text-muted-foreground">Quick-drop program:</span>
+              <Select value={activeProgram} onValueChange={setProgram}>
                 <SelectTrigger className="w-48" aria-label="Program for new shifts">
-                  <SelectValue />
+                  <SelectValue placeholder="No programs" />
                 </SelectTrigger>
                 <SelectContent>
-                  {PROGRAMS.map((p) => (
+                  {programs.map((p) => (
                     <SelectItem key={p.id} value={p.id}>
                       {p.name}
                     </SelectItem>
@@ -229,12 +276,17 @@ export function ScheduleBoard() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            {PROGRAMS.map((p) => (
+            {programs.map((p) => (
               <span
                 key={p.id}
-                className={cn("flex items-center gap-1.5 rounded px-2 py-1 text-xs", p.chip)}
+                style={chipStyle(p.color)}
+                className="flex items-center gap-1.5 rounded px-2 py-1 text-xs"
               >
-                <span className={cn("size-2 rounded-full", p.dot)} aria-hidden />
+                <span
+                  className="size-2 rounded-full"
+                  style={{ backgroundColor: p.color }}
+                  aria-hidden
+                />
                 {p.name}
               </span>
             ))}
@@ -247,6 +299,7 @@ export function ScheduleBoard() {
               staff={staff}
               conflictIds={conflictIds}
               onOpen={setEditing}
+              onAdd={(date, block) => setCreating({ date, block })}
             />
           </div>
         </section>
@@ -255,10 +308,8 @@ export function ScheduleBoard() {
       <DragOverlay dropAnimation={null}>
         {dragLabel && (
           <div
-            className={cn(
-              "rounded-md border px-2.5 py-1.5 text-xs font-medium shadow-lg",
-              programById(program).block,
-            )}
+            style={blockStyle(programById(programs, activeProgram).color)}
+            className="rounded-md border px-2.5 py-1.5 text-xs font-medium shadow-lg"
           >
             {dragLabel}
           </div>
@@ -266,6 +317,8 @@ export function ScheduleBoard() {
       </DragOverlay>
 
       <ShiftDialog shift={editing} onOpenChange={(open) => !open && setEditing(null)} />
+      <NewShiftDialog target={creating} onOpenChange={(open) => !open && setCreating(null)} />
+      <ProgramsDialog open={managing} onOpenChange={setManaging} />
     </DndContext>
   );
 }
