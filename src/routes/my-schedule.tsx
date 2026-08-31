@@ -32,7 +32,7 @@ export const Route = createFileRoute("/my-schedule")({
 });
 
 function MySchedulePage() {
-  const { staff, shifts, currentStaffId, setCurrentStaffId } = useSchedule();
+  const { staff, programs, shifts, currentStaffId, setCurrentStaffId } = useSchedule();
   const me = staff.find((s) => s.id === currentStaffId);
   const today = startOfDay(new Date());
 
@@ -90,14 +90,15 @@ function MySchedulePage() {
               </h2>
               <ul className="mt-2 space-y-2">
                 {dayShifts.map((s) => {
-                  const program = programById(s.program);
+                  const program = programById(programs, s.program);
                   return (
                     <li
                       key={s.id}
                       className="flex gap-3 rounded-lg border border-border bg-card p-3"
                     >
                       <span
-                        className={`mt-1 size-2.5 shrink-0 rounded-full ${program.dot}`}
+                        className="mt-1 size-2.5 shrink-0 rounded-full"
+                        style={{ backgroundColor: program.color }}
                         aria-hidden
                       />
                       <div className="min-w-0">
