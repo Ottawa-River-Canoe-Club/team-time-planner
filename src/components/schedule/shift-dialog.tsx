@@ -21,10 +21,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useSchedule } from "@/context/schedule-context";
-import { PROGRAMS, toMinutes, type ProgramId, type Shift } from "@/lib/schedule-types";
+import {
+  STAFF_ROLES,
+  toMinutes,
+  type ProgramId,
+  type Shift,
+  type StaffRole,
+} from "@/lib/schedule-types";
 import { format, parseISO } from "date-fns";
 
 const UNASSIGNED = "__unassigned__";
+const ANY_ROLE = "__any__";
 
 export function ShiftDialog({
   shift,
@@ -33,12 +40,13 @@ export function ShiftDialog({
   shift: Shift | null;
   onOpenChange: (open: boolean) => void;
 }) {
-  const { staff, updateShift, removeShift } = useSchedule();
+  const { staff, programs, updateShift, removeShift } = useSchedule();
   const [start, setStart] = useState("09:00");
   const [end, setEnd] = useState("12:00");
   const [program, setProgram] = useState<ProgramId>("canoe-kids");
   const [staffId, setStaffId] = useState<string>(UNASSIGNED);
   const [note, setNote] = useState("");
+  const [role, setRole] = useState<string>(ANY_ROLE);
 
   useEffect(() => {
     if (!shift) return;
@@ -47,6 +55,7 @@ export function ShiftDialog({
     setProgram(shift.program);
     setStaffId(shift.staffId ?? UNASSIGNED);
     setNote(shift.note ?? "");
+    setRole(shift.requiredRole ?? ANY_ROLE);
   }, [shift]);
 
   const save = () => {
@@ -60,6 +69,7 @@ export function ShiftDialog({
       end,
       program,
       staffId: staffId === UNASSIGNED ? null : staffId,
+      requiredRole: role === ANY_ROLE ? null : (role as StaffRole),
       note: note.trim() || undefined,
     });
     toast.success("Shift updated");
@@ -105,7 +115,7 @@ export function ShiftDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {PROGRAMS.map((p) => (
+                {programs.map((p) => (
                   <SelectItem key={p.id} value={p.id}>
                     {p.name}
                   </SelectItem>
@@ -125,6 +135,23 @@ export function ShiftDialog({
                 {staff.map((s) => (
                   <SelectItem key={s.id} value={s.id}>
                     {s.name} — {s.role}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid gap-1.5">
+            <Label>Required role (optional)</Label>
+            <Select value={role} onValueChange={setRole}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ANY_ROLE}>Any role</SelectItem>
+                {STAFF_ROLES.map((r) => (
+                  <SelectItem key={r} value={r}>
+                    {r}
                   </SelectItem>
                 ))}
               </SelectContent>
