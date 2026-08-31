@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useContext, useMemo, useState, type Context, type ReactNode } from "react";
 import {
   DEFAULT_PROGRAMS,
   STAFF,
@@ -38,7 +38,17 @@ type ScheduleContextValue = {
   conflictIds: Set<string>;
 };
 
-const ScheduleContext = createContext<ScheduleContextValue | null>(null);
+/**
+ * Cached on globalThis so hot-module reloads reuse the same context object.
+ * Without this, an HMR update can leave provider and consumer holding two
+ * different context instances → "useSchedule must be used inside ScheduleProvider".
+ */
+const globalRef = globalThis as typeof globalThis & {
+  __scheduleContext?: Context<ScheduleContextValue | null>;
+};
+const ScheduleContext =
+  globalRef.__scheduleContext ??
+  (globalRef.__scheduleContext = createContext<ScheduleContextValue | null>(null));
 
 let counter = 0;
 const nextId = () => `shift-${Date.now()}-${counter++}`;
