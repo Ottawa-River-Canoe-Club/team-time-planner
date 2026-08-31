@@ -44,7 +44,7 @@ type ScheduleContextValue = {
  * different context instances → "useSchedule must be used inside ScheduleProvider".
  */
 const globalRef = globalThis as typeof globalThis & {
-  __scheduleContext?: React.Context<ScheduleContextValue | null>;
+  __scheduleContext?: Context<ScheduleContextValue | null>;
 };
 const ScheduleContext =
   globalRef.__scheduleContext ??
