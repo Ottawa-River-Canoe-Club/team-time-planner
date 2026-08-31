@@ -43,7 +43,7 @@ export const PROGRAMS: Program[] = [
 ];
 
 export const programById = (id: ProgramId): Program =>
-  PROGRAMS.find((p) => p.id === id) ?? PROGRAMS[0];
+  PROGRAMS.find((p) => p.id === id) ?? (PROGRAMS[0] as Program);
 
 export type StaffRole =
   | "Head Coach"
@@ -84,7 +84,7 @@ export const TIME_BLOCKS: TimeBlock[] = [
 ];
 
 export const blockById = (id: BlockId): TimeBlock =>
-  TIME_BLOCKS.find((b) => b.id === id) ?? TIME_BLOCKS[0];
+  TIME_BLOCKS.find((b) => b.id === id) ?? (TIME_BLOCKS[0] as TimeBlock);
 
 export type Shift = {
   id: string;
@@ -94,7 +94,7 @@ export type Shift = {
   end: string; // HH:mm
   program: ProgramId;
   staffId: string | null;
-  note?: string;
+  note?: string | undefined;
 };
 
 export const STAFF: Staff[] = [
@@ -120,12 +120,12 @@ export const weekDays = (start: Date) => Array.from({ length: 7 }, (_, i) => add
 export const dateKey = (d: Date) => format(d, "yyyy-MM-dd");
 
 export function toMinutes(time: string) {
-  const [h, m] = time.split(":").map(Number);
+  const [h = 0, m = 0] = time.split(":").map(Number);
   return h * 60 + m;
 }
 
 export function formatTime(time: string) {
-  const [h, m] = time.split(":").map(Number);
+  const [h = 0, m = 0] = time.split(":").map(Number);
   const suffix = h >= 12 ? "pm" : "am";
   const hour = h % 12 === 0 ? 12 : h % 12;
   return m === 0 ? `${hour}${suffix}` : `${hour}:${String(m).padStart(2, "0")}${suffix}`;

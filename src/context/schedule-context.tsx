@@ -35,14 +35,14 @@ const nextId = () => `shift-${Date.now()}-${counter++}`;
 export function ScheduleProvider({ children }: { children: ReactNode }) {
   const [staff] = useState<Staff[]>(STAFF);
   const [shifts, setShifts] = useState<Shift[]>(() => seedShifts());
-  const [currentStaffId, setCurrentStaffId] = useState<string>(STAFF[2].id);
+  const [currentStaffId, setCurrentStaffId] = useState<string>(STAFF[2]!.id);
 
   const value = useMemo<ScheduleContextValue>(() => {
     const conflictIds = new Set<string>();
     for (let i = 0; i < shifts.length; i++) {
       for (let j = i + 1; j < shifts.length; j++) {
-        const a = shifts[i];
-        const b = shifts[j];
+        const a = shifts[i]!;
+        const b = shifts[j]!;
         if (a.staffId && a.staffId === b.staffId && overlaps(a, b)) {
           conflictIds.add(a.id);
           conflictIds.add(b.id);
