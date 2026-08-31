@@ -13,6 +13,7 @@ export function StaffCard({ staff, shiftCount }: { staff: Staff; shiftCount: num
     <button
       ref={setNodeRef}
       type="button"
+      suppressHydrationWarning
       {...listeners}
       {...attributes}
       className={cn(

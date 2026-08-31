@@ -33,6 +33,7 @@ export function ShiftBlock({
       {...listeners}
       {...attributes}
       role="button"
+      suppressHydrationWarning
       tabIndex={0}
       onClick={() => onOpen(shift)}
       onKeyDown={(e) => {
