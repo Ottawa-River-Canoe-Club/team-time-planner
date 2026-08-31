@@ -1,5 +1,6 @@
 import { useDroppable } from "@dnd-kit/core";
-import { format, isSameDay, parseISO } from "date-fns";
+import { format, isSameDay } from "date-fns";
+import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ShiftBlock } from "./shift-block";
 import {
@@ -17,6 +18,7 @@ function Cell({
   staff,
   conflictIds,
   onOpen,
+  onAdd,
 }: {
   day: Date;
   block: BlockId;
@@ -24,18 +26,19 @@ function Cell({
   staff: Staff[];
   conflictIds: Set<string>;
   onOpen: (shift: Shift) => void;
+  onAdd: (date: string, block: BlockId) => void;
 }) {
-  const id = `cell:${dateKey(day)}:${block}`;
+  const date = dateKey(day);
   const { setNodeRef, isOver } = useDroppable({
-    id,
-    data: { type: "cell", date: dateKey(day), block },
+    id: `cell:${date}:${block}`,
+    data: { type: "cell", date, block },
   });
 
   return (
     <div
       ref={setNodeRef}
       className={cn(
-        "min-h-24 space-y-1.5 border-b border-r border-border p-1.5 transition-colors",
+        "group/cell min-h-24 space-y-1.5 border-b border-r border-border p-1.5 transition-colors",
         isOver && "bg-accent ring-2 ring-inset ring-ring",
       )}
     >
@@ -48,16 +51,20 @@ function Cell({
           onOpen={onOpen}
         />
       ))}
-      {shifts.length === 0 && (
-        <div
-          className={cn(
-            "flex h-full min-h-20 items-center justify-center rounded-md border border-dashed border-border text-[11px] text-muted-foreground/70",
-            isOver && "border-ring text-foreground",
-          )}
-        >
-          Drop staff
-        </div>
-      )}
+      <button
+        type="button"
+        onClick={() => onAdd(date, block)}
+        className={cn(
+          "flex w-full items-center justify-center gap-1 rounded-md border border-dashed border-border py-1 text-[11px] text-muted-foreground/70 transition-colors hover:border-ring hover:bg-accent hover:text-foreground",
+          shifts.length === 0 && "min-h-20",
+        )}
+      >
+        <Plus className="size-3" aria-hidden />
+        Add shift
+        <span className="sr-only">
+          on {format(day, "EEEE MMMM d")} in the {block} block
+        </span>
+      </button>
     </div>
   );
 }
@@ -68,12 +75,14 @@ export function WeekGrid({
   staff,
   conflictIds,
   onOpen,
+  onAdd,
 }: {
   days: Date[];
   shifts: Shift[];
   staff: Staff[];
   conflictIds: Set<string>;
   onOpen: (shift: Shift) => void;
+  onAdd: (date: string, block: BlockId) => void;
 }) {
   const today = new Date();
 
@@ -84,9 +93,9 @@ export function WeekGrid({
           Block
         </div>
         {days.map((d) => {
-          const count = shifts.filter(
-            (s) => s.date === dateKey(d) && s.staffId,
-          ).length;
+          const dayShifts = shifts.filter((s) => s.date === dateKey(d));
+          const filled = dayShifts.filter((s) => s.staffId).length;
+          const open = dayShifts.length - filled;
           return (
             <div
               key={d.toISOString()}
@@ -100,7 +109,7 @@ export function WeekGrid({
                 <span className="text-xs text-muted-foreground">{format(d, "MMM d")}</span>
               </div>
               <div className="mt-0.5 text-[11px] text-muted-foreground">
-                {count} staff assigned
+                {filled} assigned{open > 0 ? ` · ${open} open` : ""}
               </div>
             </div>
           );
@@ -120,9 +129,8 @@ export function WeekGrid({
                 staff={staff}
                 conflictIds={conflictIds}
                 onOpen={onOpen}
-                shifts={shifts.filter(
-                  (s) => s.date === dateKey(d) && s.block === b.id,
-                )}
+                onAdd={onAdd}
+                shifts={shifts.filter((s) => s.date === dateKey(d) && s.block === b.id)}
               />
             ))}
           </div>
@@ -132,7 +140,6 @@ export function WeekGrid({
         {shifts.length} shifts scheduled between {format(days[0] ?? today, "PPP")} and{" "}
         {format(days[days.length - 1] ?? today, "PPP")}
       </p>
-      <span className="hidden">{parseISO(dateKey(today)).getTime()}</span>
     </div>
   );
 }
