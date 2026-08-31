@@ -113,6 +113,7 @@ export function ScheduleBoard() {
 
   return (
     <DndContext
+      id="schedule-dnd"
       sensors={sensors}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
