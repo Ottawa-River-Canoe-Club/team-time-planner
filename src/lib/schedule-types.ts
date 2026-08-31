@@ -1,49 +1,55 @@
 import { addDays, format, startOfWeek } from "date-fns";
 
-export type ProgramId = "canoe-kids" | "regattas" | "boat-rentals" | "adult-masters";
+export type ProgramId = string;
 
 export type Program = {
   id: ProgramId;
   name: string;
-  /** Tailwind classes driven by semantic program tokens */
-  block: string;
-  chip: string;
-  dot: string;
+  /** Any CSS color; used to derive block, chip and dot styles */
+  color: string;
 };
 
-export const PROGRAMS: Program[] = [
-  {
-    id: "canoe-kids",
-    name: "Canoe Kids Camp",
-    block: "bg-program-kids/12 border-program-kids/45 text-program-kids-ink",
-    chip: "bg-program-kids/15 text-program-kids-ink",
-    dot: "bg-program-kids",
-  },
-  {
-    id: "regattas",
-    name: "Regattas",
-    block: "bg-program-regatta/12 border-program-regatta/45 text-program-regatta-ink",
-    chip: "bg-program-regatta/15 text-program-regatta-ink",
-    dot: "bg-program-regatta",
-  },
-  {
-    id: "boat-rentals",
-    name: "Boat Rentals",
-    block: "bg-program-rentals/12 border-program-rentals/45 text-program-rentals-ink",
-    chip: "bg-program-rentals/15 text-program-rentals-ink",
-    dot: "bg-program-rentals",
-  },
-  {
-    id: "adult-masters",
-    name: "Adult Masters",
-    block: "bg-program-masters/12 border-program-masters/45 text-program-masters-ink",
-    chip: "bg-program-masters/15 text-program-masters-ink",
-    dot: "bg-program-masters",
-  },
+export const DEFAULT_PROGRAMS: Program[] = [
+  { id: "canoe-kids", name: "Canoe Kids Camp", color: "oklch(0.58 0.13 245)" },
+  { id: "regattas", name: "Regattas", color: "oklch(0.72 0.15 65)" },
+  { id: "boat-rentals", name: "Boat Rentals", color: "oklch(0.62 0.13 155)" },
+  { id: "adult-masters", name: "Adult Masters", color: "oklch(0.58 0.15 300)" },
 ];
 
-export const programById = (id: ProgramId): Program =>
-  PROGRAMS.find((p) => p.id === id) ?? (PROGRAMS[0] as Program);
+export const PROGRAM_SWATCHES = [
+  "oklch(0.58 0.13 245)",
+  "oklch(0.72 0.15 65)",
+  "oklch(0.62 0.13 155)",
+  "oklch(0.58 0.15 300)",
+  "oklch(0.62 0.18 20)",
+  "oklch(0.66 0.13 195)",
+  "oklch(0.6 0.14 340)",
+  "oklch(0.55 0.02 260)",
+];
+
+const FALLBACK_PROGRAM: Program = {
+  id: "unknown",
+  name: "Unassigned program",
+  color: "oklch(0.55 0.02 260)",
+};
+
+export const programById = (programs: Program[], id: ProgramId): Program =>
+  programs.find((p) => p.id === id) ?? programs[0] ?? FALLBACK_PROGRAM;
+
+export const blockStyle = (color: string, faded = false) => ({
+  backgroundColor: `color-mix(in oklab, ${color} ${faded ? 6 : 14}%, transparent)`,
+  borderColor: `color-mix(in oklab, ${color} ${faded ? 60 : 45}%, transparent)`,
+  color: `color-mix(in oklab, ${color} 78%, var(--foreground))`,
+});
+
+export const chipStyle = (color: string) => ({
+  backgroundColor: `color-mix(in oklab, ${color} 16%, transparent)`,
+  color: `color-mix(in oklab, ${color} 78%, var(--foreground))`,
+});
+
+export const slugify = (name: string) =>
+  name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") ||
+  `program-${Math.random().toString(36).slice(2, 7)}`;
 
 export type StaffRole =
   | "Head Coach"
@@ -94,6 +100,7 @@ export type Shift = {
   end: string; // HH:mm
   program: ProgramId;
   staffId: string | null;
+  requiredRole?: StaffRole | null | undefined;
   note?: string | undefined;
 };
 
