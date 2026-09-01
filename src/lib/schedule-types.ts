@@ -181,6 +181,9 @@ export function seedRoster(anchor: Date = new Date()) {
     ["canoe-kids", ["s3", "s5", "s10"]],
     ["youth-camps", ["s4", "s7"]],
     ["intro-to-comp", ["s2"]],
+    ["opening-shift", ["s6"]],
+    ["mid-day-shift", ["s7"]],
+    ["closing-shift", ["s10"]],
   ];
 
   for (const [programId, people] of rows) {
