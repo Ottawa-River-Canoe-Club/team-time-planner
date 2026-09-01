@@ -41,17 +41,18 @@ export const Route = createFileRoute("/my-schedule")({
 });
 
 function MySchedulePage() {
-  const { staff, programs, slots, programWeeks, currentStaffId, setCurrentStaffId } = useSchedule();
+  const { staff, programs, assignments, programWeeks, currentStaffId, setCurrentStaffId } =
+    useSchedule();
   const me = staff.find((s) => s.id === currentStaffId);
   const thisWeek = weekKey(new Date());
 
-  const mine = slots
-    .filter((s) => s.staffId === currentStaffId)
-    .filter((s) => !isBefore(parseWeek(s.week), parseWeek(thisWeek)))
-    .sort((a, b) => (a.week === b.week ? a.label.localeCompare(b.label) : a.week < b.week ? -1 : 1));
+  const mine = assignments
+    .filter((a) => a.staffId === currentStaffId)
+    .filter((a) => !isBefore(parseWeek(a.week), parseWeek(thisWeek)))
+    .sort((a, b) => (a.week === b.week ? a.day - b.day : a.week < b.week ? -1 : 1));
 
-  const byWeek = mine.reduce<Record<string, typeof mine>>((acc, slot) => {
-    (acc[slot.week] ??= []).push(slot);
+  const byWeek = mine.reduce<Record<string, typeof mine>>((acc, a) => {
+    (acc[a.week] ??= []).push(a);
     return acc;
   }, {});
 
@@ -64,7 +65,7 @@ function MySchedulePage() {
             <h1 className="text-2xl font-semibold tracking-tight text-foreground">My weeks</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               {me ? `${me.name} · ${me.role}` : "Select a staff member"} · {mine.length} upcoming
-              assignment{mine.length === 1 ? "" : "s"}
+              day{mine.length === 1 ? "" : "s"}
             </p>
           </div>
           <div className="w-56">
@@ -84,29 +85,28 @@ function MySchedulePage() {
         </div>
 
         <div className="mt-6 space-y-5">
-          {Object.entries(byWeek).map(([week, weekSlots]) => (
+          {Object.entries(byWeek).map(([week, days]) => (
             <section key={week}>
               <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
                 <CalendarDays className="size-4 text-muted-foreground" aria-hidden />
                 {weekLabel(parseWeek(week))}
               </h2>
               <ul className="mt-2 space-y-2">
-                {weekSlots.map((slot) => {
-                  const program = programById(programs, slot.programId);
-                  const meta = programWeeks[metaKey(week, slot.programId)];
+                {days.map((a) => {
+                  const program = programById(programs, a.programId);
+                  const meta = programWeeks[metaKey(week, a.programId)];
                   return (
-                    <li
-                      key={slot.id}
-                      className="rounded-lg border border-border bg-card p-3 shadow-sm"
-                    >
+                    <li key={a.id} className="rounded-lg border border-border bg-card p-3 shadow-sm">
                       <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-sm font-semibold text-foreground">
+                          {DAY_LABELS[a.day]}
+                        </span>
                         <span
                           style={chipStyle(program.color)}
                           className="rounded px-2 py-0.5 text-xs font-medium"
                         >
                           {program.name}
                         </span>
-                        <span className="text-sm font-semibold text-foreground">{slot.label}</span>
                         {meta && meta.participants > 0 && (
                           <span className="text-xs text-muted-foreground">
                             {meta.participants} participants
@@ -125,6 +125,7 @@ function MySchedulePage() {
               </ul>
             </section>
           ))}
+
 
           {mine.length === 0 && (
             <p className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">

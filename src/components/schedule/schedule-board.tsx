@@ -225,7 +225,7 @@ export function ScheduleBoard() {
               <Palette className="size-4" /> Manage programs
             </Button>
             <span className="text-xs text-muted-foreground">
-              {filled} filled{open > 0 ? ` · ${open} open` : ""}
+              {filled} assignment{filled === 1 ? "" : "s"} · {people} staff
             </span>
 
             <div className="ml-auto flex flex-wrap items-center gap-2">
