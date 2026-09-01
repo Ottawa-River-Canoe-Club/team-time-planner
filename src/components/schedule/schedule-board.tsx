@@ -13,7 +13,7 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { addWeeks, format } from "date-fns";
+import { addWeeks } from "date-fns";
 import { ChevronLeft, ChevronRight, Palette, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -29,23 +29,17 @@ import { cn } from "@/lib/utils";
 import { useSchedule } from "@/context/schedule-context";
 import {
   STAFF_ROLES,
-  blockStyle,
   chipStyle,
-  dateKey,
-  programById,
-  weekDays,
+  parseWeek,
+  weekKey,
+  weekLabel,
   weekStart,
-  type BlockId,
-  type ProgramId,
-  type Shift,
 } from "@/lib/schedule-types";
 import { StaffCard } from "./staff-card";
-import { WeekGrid } from "./week-grid";
-import { ShiftDialog } from "./shift-dialog";
-import { NewShiftDialog, type NewShiftTarget } from "./new-shift-dialog";
+import { RosterGrid } from "./roster-grid";
 import { ProgramsDialog } from "./programs-dialog";
 
-/** Prefer an unassigned shift slot under the pointer over its parent cell. */
+/** Prefer a role slot under the pointer over anything else. */
 const collisionDetection: CollisionDetection = (args) => {
   const pointer = pointerWithin(args);
   const collisions = pointer.length > 0 ? pointer : rectIntersection(args);
@@ -54,13 +48,10 @@ const collisionDetection: CollisionDetection = (args) => {
 };
 
 export function ScheduleBoard() {
-  const { staff, programs, shifts, conflictIds, addShift, moveShift, updateShift } = useSchedule();
-  const [anchor, setAnchor] = useState(() => weekStart(new Date()));
+  const { staff, programs, slots, assignSlot } = useSchedule();
+  const [week, setWeek] = useState<string>(() => weekKey(new Date()));
   const [query, setQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
-  const [program, setProgram] = useState<ProgramId>(programs[0]?.id ?? "");
-  const [editing, setEditing] = useState<Shift | null>(null);
-  const [creating, setCreating] = useState<NewShiftTarget | null>(null);
   const [managing, setManaging] = useState(false);
   const [dragLabel, setDragLabel] = useState<string | null>(null);
 
@@ -68,14 +59,11 @@ export function ScheduleBoard() {
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor),
   );
-  const days = useMemo(() => weekDays(anchor), [anchor]);
-  const dayKeys = useMemo(() => days.map(dateKey), [days]);
-  const weekShifts = useMemo(
-    () => shifts.filter((s) => dayKeys.includes(s.date)),
-    [shifts, dayKeys],
-  );
 
-  const activeProgram = programs.some((p) => p.id === program) ? program : (programs[0]?.id ?? "");
+  const monday = useMemo(() => parseWeek(week), [week]);
+  const weekSlots = useMemo(() => slots.filter((s) => s.week === week), [slots, week]);
+  const filled = weekSlots.filter((s) => s.staffId).length;
+  const open = weekSlots.length - filled;
 
   const filteredStaff = staff.filter(
     (s) =>
@@ -88,17 +76,14 @@ export function ScheduleBoard() {
     data: { type: "unassign" },
   });
 
+  const shiftWeek = (delta: number) => setWeek(weekKey(addWeeks(monday, delta)));
+
   const onDragStart = (event: DragStartEvent) => {
     const data = event.active.data.current as
       | { type: "staff"; staffId: string }
-      | { type: "shift"; shiftId: string }
       | undefined;
     if (data?.type === "staff") {
       setDragLabel(staff.find((s) => s.id === data.staffId)?.name ?? "Staff");
-    } else if (data?.type === "shift") {
-      const shift = shifts.find((s) => s.id === data.shiftId);
-      const person = staff.find((s) => s.id === shift?.staffId);
-      setDragLabel(person?.name ?? "Unassigned shift");
     }
   };
 
@@ -106,57 +91,32 @@ export function ScheduleBoard() {
     setDragLabel(null);
     const { active, over } = event;
     if (!over) return;
-    const from = active.data.current as
-      | { type: "staff"; staffId: string }
-      | { type: "shift"; shiftId: string }
-      | undefined;
+    const from = active.data.current as { type: "staff"; staffId: string } | undefined;
     const target = over.data.current as
-      | { type: "cell"; date: string; block: BlockId }
-      | { type: "slot"; shiftId: string }
+      | { type: "slot"; slotId: string }
       | { type: "unassign" }
       | undefined;
-    if (!from || !target) return;
+    if (!from || from.type !== "staff" || !target) return;
 
-    if (target.type === "unassign") {
-      if (from.type === "shift") {
-        updateShift(from.shiftId, { staffId: null });
-        toast.success("Shift unassigned");
-      }
-      return;
-    }
+    if (target.type === "unassign") return;
 
-    if (target.type === "slot") {
-      if (from.type !== "staff") return;
-      const slot = shifts.find((s) => s.id === target.shiftId);
-      const person = staff.find((s) => s.id === from.staffId);
-      if (slot?.requiredRole && person && person.role !== slot.requiredRole) {
-        toast.warning(`${person.name} is a ${person.role}, this slot asks for a ${slot.requiredRole}.`);
-      }
-      updateShift(target.shiftId, { staffId: from.staffId });
-      toast.success(`${person?.name ?? "Staff"} filled an open shift`);
-      return;
-    }
-
-    if (from.type === "staff") {
-      if (!activeProgram) {
-        toast.error("Create a program first.");
-        return;
-      }
-      addShift({
-        date: target.date,
-        block: target.block,
-        program: activeProgram,
-        staffId: from.staffId,
-      });
-      toast.success(`${staff.find((s) => s.id === from.staffId)?.name} scheduled`);
+    const slot = slots.find((s) => s.id === target.slotId);
+    if (!slot) return;
+    const person = staff.find((s) => s.id === from.staffId);
+    const alreadyThisWeek = slots.some(
+      (s) => s.week === slot.week && s.staffId === from.staffId && s.id !== slot.id,
+    );
+    assignSlot(slot.id, from.staffId);
+    if (alreadyThisWeek) {
+      toast.warning(`${person?.name ?? "Staff"} is now in two slots this week.`);
     } else {
-      moveShift(from.shiftId, target.date, target.block);
+      toast.success(`${person?.name ?? "Staff"} → ${slot.label}`);
     }
   };
 
   return (
     <DndContext
-      id="schedule-dnd"
+      id="roster-dnd"
       sensors={sensors}
       collisionDetection={collisionDetection}
       onDragStart={onDragStart}
@@ -169,7 +129,7 @@ export function ScheduleBoard() {
             <div>
               <h2 className="text-sm font-semibold text-foreground">Staff</h2>
               <p className="text-xs text-muted-foreground">
-                Drag onto an open shift to fill it, or onto a cell to create one.
+                Drag someone into a role slot for this week.
               </p>
             </div>
 
@@ -206,7 +166,7 @@ export function ScheduleBoard() {
                 <StaffCard
                   key={s.id}
                   staff={s}
-                  shiftCount={weekShifts.filter((sh) => sh.staffId === s.id).length}
+                  shiftCount={weekSlots.filter((sl) => sl.staffId === s.id).length}
                 />
               ))}
               {filteredStaff.length === 0 && (
@@ -219,11 +179,11 @@ export function ScheduleBoard() {
             <div
               ref={unassignRef}
               className={cn(
-                "flex items-center justify-center gap-2 rounded-md border border-dashed border-border p-3 text-xs text-muted-foreground",
+                "flex items-center justify-center gap-2 rounded-md border border-dashed border-border p-3 text-center text-xs text-muted-foreground",
                 unassignOver && "border-destructive bg-destructive/10 text-destructive",
               )}
             >
-              <Trash2 className="size-3.5" aria-hidden /> Drop a shift here to unassign
+              <Trash2 className="size-3.5 shrink-0" aria-hidden /> Clear a slot with its × button
             </div>
           </div>
         </aside>
@@ -235,7 +195,7 @@ export function ScheduleBoard() {
                 variant="outline"
                 size="icon"
                 aria-label="Previous week"
-                onClick={() => setAnchor((a) => addWeeks(a, -1))}
+                onClick={() => shiftWeek(-1)}
               >
                 <ChevronLeft className="size-4" />
               </Button>
@@ -243,81 +203,54 @@ export function ScheduleBoard() {
                 variant="outline"
                 size="icon"
                 aria-label="Next week"
-                onClick={() => setAnchor((a) => addWeeks(a, 1))}
+                onClick={() => shiftWeek(1)}
               >
                 <ChevronRight className="size-4" />
               </Button>
-              <Button variant="ghost" onClick={() => setAnchor(weekStart(new Date()))}>
-                Today
+              <Button variant="ghost" onClick={() => setWeek(weekKey(weekStart(new Date())))}>
+                This week
               </Button>
             </div>
-            <h1 className="text-base font-semibold text-foreground">
-              {format(days[0] ?? anchor, "MMM d")} – {format(days[6] ?? anchor, "MMM d, yyyy")}
-            </h1>
+            <h1 className="text-base font-semibold text-foreground">{weekLabel(monday)}</h1>
             <Button variant="outline" size="sm" onClick={() => setManaging(true)}>
               <Palette className="size-4" /> Manage programs
             </Button>
+            <span className="text-xs text-muted-foreground">
+              {filled} filled{open > 0 ? ` · ${open} open` : ""}
+            </span>
 
-            <div className="ml-auto flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">Quick-drop program:</span>
-              <Select value={activeProgram} onValueChange={setProgram}>
-                <SelectTrigger className="w-48" aria-label="Program for new shifts">
-                  <SelectValue placeholder="No programs" />
-                </SelectTrigger>
-                <SelectContent>
-                  {programs.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="ml-auto flex flex-wrap items-center gap-2">
+              {programs.map((p) => (
+                <span
+                  key={p.id}
+                  style={chipStyle(p.color)}
+                  className="flex items-center gap-1.5 rounded px-2 py-1 text-xs"
+                >
+                  <span
+                    className="size-2 rounded-full"
+                    style={{ backgroundColor: p.color }}
+                    aria-hidden
+                  />
+                  {p.name}
+                </span>
+              ))}
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            {programs.map((p) => (
-              <span
-                key={p.id}
-                style={chipStyle(p.color)}
-                className="flex items-center gap-1.5 rounded px-2 py-1 text-xs"
-              >
-                <span
-                  className="size-2 rounded-full"
-                  style={{ backgroundColor: p.color }}
-                  aria-hidden
-                />
-                {p.name}
-              </span>
-            ))}
-          </div>
-
           <div className="overflow-x-auto pb-2">
-            <WeekGrid
-              days={days}
-              shifts={weekShifts}
-              staff={staff}
-              conflictIds={conflictIds}
-              onOpen={setEditing}
-              onAdd={(date, block) => setCreating({ date, block })}
-            />
+            <RosterGrid week={week} />
           </div>
         </section>
       </div>
 
       <DragOverlay dropAnimation={null}>
         {dragLabel && (
-          <div
-            style={blockStyle(programById(programs, activeProgram).color)}
-            className="rounded-md border px-2.5 py-1.5 text-xs font-medium shadow-lg"
-          >
+          <div className="rounded-md border border-border bg-card px-2.5 py-1.5 text-xs font-medium text-foreground shadow-lg">
             {dragLabel}
           </div>
         )}
       </DragOverlay>
 
-      <ShiftDialog shift={editing} onOpenChange={(open) => !open && setEditing(null)} />
-      <NewShiftDialog target={creating} onOpenChange={(open) => !open && setCreating(null)} />
       <ProgramsDialog open={managing} onOpenChange={setManaging} />
     </DndContext>
   );
