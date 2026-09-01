@@ -16,6 +16,9 @@ export type ScheduleContextValue = {
   programWeeks: Record<string, ProgramWeek>;
   currentStaffId: string;
   setCurrentStaffId: (id: string) => void;
+  /** Currently selected schedule type (operational area) */
+  activeTypeId: string;
+  setActiveTypeId: (id: string) => void;
   /** Assignment ids where the same person is booked twice on the same day. */
   doubleBookedIds: Set<string>;
   addAssignment: (week: WeekKey, programId: ProgramId, day: DayIndex, staffId: string) => boolean;
