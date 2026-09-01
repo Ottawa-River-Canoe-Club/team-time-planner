@@ -129,11 +129,13 @@ export function ProgramsDialog({
               </div>
             );
           })}
-          {programs.length === 0 && (
-            <p className="rounded-md border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
-              No programs yet — add one below.
-            </p>
-          )}
+              {programs.filter((p) => p.typeId === t.id).length === 0 && (
+                <p className="rounded-md border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
+                  Nothing in {t.name} yet.
+                </p>
+              )}
+            </div>
+          ))}
         </div>
 
         <div className="rounded-lg border border-dashed border-border p-3">
@@ -147,6 +149,18 @@ export function ProgramsDialog({
               onKeyDown={(e) => e.key === "Enter" && create()}
               className="h-8"
             />
+            <Select value={typeId} onValueChange={setTypeId}>
+              <SelectTrigger className="h-8 w-40" aria-label="Schedule type">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {SCHEDULE_TYPES.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Button size="sm" onClick={create}>
               <Plus className="size-4" /> Add
             </Button>
