@@ -224,6 +224,43 @@ export function ScheduleBoard() {
             <Button variant="outline" size="sm" onClick={() => setManaging(true)}>
               <Palette className="size-4" /> Manage programs
             </Button>
+            <AlertDialog open={clearing} onOpenChange={setClearing}>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm" disabled={assignments.length === 0}>
+                  <Eraser className="size-4" /> Clear schedule
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Clear the schedule?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Choose whether to clear only {weekLabel(monday)} or every week. Participant
+                    counts and weekly notes are cleared too. This can't be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      clearWeek(week);
+                      setClearing(false);
+                      toast.success(`Cleared ${weekLabel(monday)}.`);
+                    }}
+                  >
+                    Clear this week
+                  </Button>
+                  <AlertDialogAction
+                    onClick={() => {
+                      clearAll();
+                      toast.success("Cleared the whole schedule.");
+                    }}
+                  >
+                    Clear all weeks
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
             <span className="text-xs text-muted-foreground">
               {filled} assignment{filled === 1 ? "" : "s"} · {people} staff
             </span>
