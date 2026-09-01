@@ -49,7 +49,7 @@ export function ProgramsDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const { programs, slots, addProgram, updateProgram, removeProgram } = useSchedule();
+  const { programs, assignments, addProgram, updateProgram, removeProgram } = useSchedule();
   const [name, setName] = useState("");
   const [color, setColor] = useState(PROGRAM_SWATCHES[4]!);
 
@@ -81,7 +81,7 @@ export function ProgramsDialog({
 
         <div className="space-y-3">
           {programs.map((p) => {
-            const used = slots.filter((s) => s.programId === p.id).length;
+            const used = assignments.filter((a) => a.programId === p.id).length;
             return (
               <div key={p.id} className="rounded-lg border border-border p-3">
                 <div className="flex items-center gap-2">
