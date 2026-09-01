@@ -1,9 +1,10 @@
 import { createContext, useContext } from "react";
 import type {
+  Assignment,
+  DayIndex,
   Program,
   ProgramId,
   ProgramWeek,
-  RoleSlot,
   Staff,
   WeekKey,
 } from "@/lib/schedule-types";
@@ -11,16 +12,14 @@ import type {
 export type ScheduleContextValue = {
   staff: Staff[];
   programs: Program[];
-  slots: RoleSlot[];
+  assignments: Assignment[];
   programWeeks: Record<string, ProgramWeek>;
   currentStaffId: string;
   setCurrentStaffId: (id: string) => void;
-  /** Slot ids where the same person is booked twice in one week. */
+  /** Assignment ids where the same person is booked twice on the same day. */
   doubleBookedIds: Set<string>;
-  addSlot: (week: WeekKey, programId: ProgramId, label: string) => void;
-  updateSlot: (id: string, patch: Partial<Omit<RoleSlot, "id">>) => void;
-  removeSlot: (id: string) => void;
-  assignSlot: (id: string, staffId: string | null) => void;
+  addAssignment: (week: WeekKey, programId: ProgramId, day: DayIndex, staffId: string) => boolean;
+  removeAssignment: (id: string) => void;
   setParticipants: (week: WeekKey, programId: ProgramId, participants: number) => void;
   setNotes: (week: WeekKey, programId: ProgramId, notes: string) => void;
   addProgram: (program: Program) => void;
