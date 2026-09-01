@@ -61,6 +61,16 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
         return true;
       },
       removeAssignment: (id) => setAssignments((previous) => previous.filter((a) => a.id !== id)),
+      clearWeek: (week) => {
+        setAssignments((previous) => previous.filter((a) => a.week !== week));
+        setProgramWeeks((previous) =>
+          Object.fromEntries(Object.entries(previous).filter(([key]) => !key.startsWith(`${week}|`))),
+        );
+      },
+      clearAll: () => {
+        setAssignments([]);
+        setProgramWeeks({});
+      },
       setParticipants: (week, programId, participants) =>
         patchMeta(week, programId, { participants }),
       setNotes: (week, programId, notes) => patchMeta(week, programId, { notes }),

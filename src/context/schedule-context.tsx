@@ -20,6 +20,10 @@ export type ScheduleContextValue = {
   doubleBookedIds: Set<string>;
   addAssignment: (week: WeekKey, programId: ProgramId, day: DayIndex, staffId: string) => boolean;
   removeAssignment: (id: string) => void;
+  /** Clear all assignments (and notes/participants) for one week. */
+  clearWeek: (week: WeekKey) => void;
+  /** Clear the entire schedule across every week. */
+  clearAll: () => void;
   setParticipants: (week: WeekKey, programId: ProgramId, participants: number) => void;
   setNotes: (week: WeekKey, programId: ProgramId, notes: string) => void;
   addProgram: (program: Program) => void;

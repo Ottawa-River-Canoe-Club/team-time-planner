@@ -14,8 +14,19 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/core";
 import { addWeeks } from "date-fns";
-import { ChevronLeft, ChevronRight, Palette, Search, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Eraser, Palette, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -51,11 +62,12 @@ const collisionDetection: CollisionDetection = (args) => {
 };
 
 export function ScheduleBoard() {
-  const { staff, programs, assignments, addAssignment } = useSchedule();
+  const { staff, programs, assignments, addAssignment, clearWeek, clearAll } = useSchedule();
   const [week, setWeek] = useState<string>(() => weekKey(new Date()));
   const [query, setQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [managing, setManaging] = useState(false);
+  const [clearing, setClearing] = useState(false);
   const [dragLabel, setDragLabel] = useState<string | null>(null);
 
   const sensors = useSensors(
@@ -224,6 +236,43 @@ export function ScheduleBoard() {
             <Button variant="outline" size="sm" onClick={() => setManaging(true)}>
               <Palette className="size-4" /> Manage programs
             </Button>
+            <AlertDialog open={clearing} onOpenChange={setClearing}>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm" disabled={assignments.length === 0}>
+                  <Eraser className="size-4" /> Clear schedule
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Clear the schedule?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Choose whether to clear only {weekLabel(monday)} or every week. Participant
+                    counts and weekly notes are cleared too. This can't be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      clearWeek(week);
+                      setClearing(false);
+                      toast.success(`Cleared ${weekLabel(monday)}.`);
+                    }}
+                  >
+                    Clear this week
+                  </Button>
+                  <AlertDialogAction
+                    onClick={() => {
+                      clearAll();
+                      toast.success("Cleared the whole schedule.");
+                    }}
+                  >
+                    Clear all weeks
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
             <span className="text-xs text-muted-foreground">
               {filled} assignment{filled === 1 ? "" : "s"} · {people} staff
             </span>
