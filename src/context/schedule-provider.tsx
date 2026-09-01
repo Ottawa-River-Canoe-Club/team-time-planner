@@ -2,6 +2,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { ScheduleContext, type ScheduleContextValue } from "./schedule-context";
 import {
   DEFAULT_PROGRAMS,
+  SCHEDULE_TYPES,
   STAFF,
   metaKey,
   seedRoster,
@@ -21,6 +22,7 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
   const [assignments, setAssignments] = useState<Assignment[]>(seed.assignments);
   const [programWeeks, setProgramWeeks] = useState<Record<string, ProgramWeek>>(seed.programWeeks);
   const [currentStaffId, setCurrentStaffId] = useState<string>(STAFF[4]?.id ?? "");
+  const [activeTypeId, setActiveTypeId] = useState<string>(SCHEDULE_TYPES[0]?.id ?? "camp");
 
   const value = useMemo<ScheduleContextValue>(() => {
     const seen = new Map<string, string[]>();
@@ -47,6 +49,8 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
       programWeeks,
       currentStaffId,
       setCurrentStaffId,
+      activeTypeId,
+      setActiveTypeId,
       doubleBookedIds,
       addAssignment: (week, programId, day, staffId) => {
         const exists = assignments.some(
@@ -82,7 +86,7 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
         setAssignments((previous) => previous.filter((a) => a.programId !== id));
       },
     };
-  }, [staff, programs, assignments, programWeeks, currentStaffId]);
+  }, [staff, programs, assignments, programWeeks, currentStaffId, activeTypeId]);
 
   return <ScheduleContext.Provider value={value}>{children}</ScheduleContext.Provider>;
 }

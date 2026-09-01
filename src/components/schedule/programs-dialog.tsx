@@ -12,9 +12,16 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useSchedule } from "@/context/schedule-context";
-import { PROGRAM_SWATCHES, slugify } from "@/lib/schedule-types";
+import { PROGRAM_SWATCHES, SCHEDULE_TYPES, slugify } from "@/lib/schedule-types";
 
 function Swatches({
   value,
@@ -49,8 +56,10 @@ export function ProgramsDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const { programs, assignments, addProgram, updateProgram, removeProgram } = useSchedule();
+  const { programs, assignments, activeTypeId, addProgram, updateProgram, removeProgram } =
+    useSchedule();
   const [name, setName] = useState("");
+  const [typeId, setTypeId] = useState(activeTypeId);
   const [color, setColor] = useState(PROGRAM_SWATCHES[4]!);
 
   const create = () => {
@@ -64,7 +73,7 @@ export function ProgramsDialog({
       toast.error("A program with that name already exists.");
       return;
     }
-    addProgram({ id, name: trimmed, short: trimmed.slice(0, 3).toUpperCase(), color });
+    addProgram({ id, typeId, name: trimmed, short: trimmed.slice(0, 3).toUpperCase(), color });
     setName("");
     toast.success(`${trimmed} added`);
   };
@@ -79,8 +88,13 @@ export function ProgramsDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3">
-          {programs.map((p) => {
+        <div className="max-h-[50vh] space-y-3 overflow-y-auto pr-1">
+          {SCHEDULE_TYPES.map((t) => (
+            <div key={t.id} className="space-y-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                {t.name}
+              </p>
+          {programs.filter((p) => p.typeId === t.id).map((p) => {
             const used = assignments.filter((a) => a.programId === p.id).length;
             return (
               <div key={p.id} className="rounded-lg border border-border p-3">
@@ -122,11 +136,13 @@ export function ProgramsDialog({
               </div>
             );
           })}
-          {programs.length === 0 && (
-            <p className="rounded-md border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
-              No programs yet — add one below.
-            </p>
-          )}
+              {programs.filter((p) => p.typeId === t.id).length === 0 && (
+                <p className="rounded-md border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
+                  Nothing in {t.name} yet.
+                </p>
+              )}
+            </div>
+          ))}
         </div>
 
         <div className="rounded-lg border border-dashed border-border p-3">
@@ -140,6 +156,18 @@ export function ProgramsDialog({
               onKeyDown={(e) => e.key === "Enter" && create()}
               className="h-8"
             />
+            <Select value={typeId} onValueChange={setTypeId}>
+              <SelectTrigger className="h-8 w-40" aria-label="Schedule type">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {SCHEDULE_TYPES.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Button size="sm" onClick={create}>
               <Plus className="size-4" /> Add
             </Button>
