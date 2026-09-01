@@ -49,8 +49,10 @@ export function ProgramsDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const { programs, assignments, addProgram, updateProgram, removeProgram } = useSchedule();
+  const { programs, assignments, activeTypeId, addProgram, updateProgram, removeProgram } =
+    useSchedule();
   const [name, setName] = useState("");
+  const [typeId, setTypeId] = useState(activeTypeId);
   const [color, setColor] = useState(PROGRAM_SWATCHES[4]!);
 
   const create = () => {
@@ -64,7 +66,7 @@ export function ProgramsDialog({
       toast.error("A program with that name already exists.");
       return;
     }
-    addProgram({ id, name: trimmed, short: trimmed.slice(0, 3).toUpperCase(), color });
+    addProgram({ id, typeId, name: trimmed, short: trimmed.slice(0, 3).toUpperCase(), color });
     setName("");
     toast.success(`${trimmed} added`);
   };
