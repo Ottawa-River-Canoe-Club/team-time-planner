@@ -21,6 +21,7 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
   const [assignments, setAssignments] = useState<Assignment[]>(seed.assignments);
   const [programWeeks, setProgramWeeks] = useState<Record<string, ProgramWeek>>(seed.programWeeks);
   const [currentStaffId, setCurrentStaffId] = useState<string>(STAFF[4]?.id ?? "");
+  const [activeTypeId, setActiveTypeId] = useState<string>(SCHEDULE_TYPES[0]?.id ?? "camp");
 
   const value = useMemo<ScheduleContextValue>(() => {
     const seen = new Map<string, string[]>();
