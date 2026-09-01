@@ -17,6 +17,7 @@ import { addWeeks } from "date-fns";
 import {
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Eraser,
   FileDown,
   Loader2,
@@ -37,12 +38,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -98,6 +93,7 @@ export function ScheduleBoard() {
   const [clearing, setClearing] = useState(false);
   const [dragLabel, setDragLabel] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const exportMenuRef = useRef<HTMLDetailsElement>(null);
   const exportRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const sensors = useSensors(
@@ -166,6 +162,7 @@ export function ScheduleBoard() {
 
 
   const runExport = async (mode: "current" | "all") => {
+    if (exportMenuRef.current) exportMenuRef.current.open = false;
     const types = mode === "current" ? SCHEDULE_TYPES.filter((t) => t.id === activeTypeId) : SCHEDULE_TYPES;
     const nodes = types
       .map((t) => exportRefs.current[t.id])
@@ -321,26 +318,37 @@ export function ScheduleBoard() {
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" disabled={exporting}>
+            <details ref={exportMenuRef} className="group relative">
+              <summary className="list-none [&::-webkit-details-marker]:hidden">
+                <Button asChild variant="outline" size="sm">
+                  <span aria-disabled={exporting} className={cn(exporting && "pointer-events-none opacity-50")}>
                   {exporting ? (
                     <Loader2 className="size-4 animate-spin" />
                   ) : (
                     <FileDown className="size-4" />
                   )}
                   Export to PDF
+                    <ChevronDown className="size-3.5 transition-transform group-open:rotate-180" />
+                  </span>
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                <DropdownMenuItem onSelect={() => void runExport("current")}>
+              </summary>
+              <div className="absolute left-0 z-50 mt-1 min-w-56 rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md">
+                <Button
+                  variant="ghost"
+                  className="h-auto w-full justify-start px-2 py-1.5 text-sm font-normal"
+                  onClick={() => void runExport("current")}
+                >
                   Export current schedule
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => void runExport("all")}>
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="h-auto w-full justify-start px-2 py-1.5 text-sm font-normal"
+                  onClick={() => void runExport("all")}
+                >
                   Export amalgamated schedule
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                </Button>
+              </div>
+            </details>
             <span className="text-xs text-muted-foreground">
               {filled} assignment{filled === 1 ? "" : "s"} · {people} staff
             </span>
