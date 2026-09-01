@@ -1,37 +1,40 @@
-import { Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { useSchedule } from "@/context/schedule-context";
-import { RoleSlotCell } from "./role-slot";
+import { DayCell } from "./day-cell";
 import {
+  DAY_INDEXES,
+  DAY_LABELS,
   metaKey,
   ratioLabel,
+  type Assignment,
   type Program,
-  type RoleSlot,
   type WeekKey,
 } from "@/lib/schedule-types";
 
-const MAX_COLUMNS = 4;
-
-function ProgramRow({ program, week, slots }: { program: Program; week: WeekKey; slots: RoleSlot[] }) {
+function ProgramRow({
+  program,
+  week,
+  rowAssignments,
+}: {
+  program: Program;
+  week: WeekKey;
+  rowAssignments: Assignment[];
+}) {
   const {
     staff,
     programWeeks,
     doubleBookedIds,
-    addSlot,
-    updateSlot,
-    removeSlot,
-    assignSlot,
+    removeAssignment,
     setParticipants,
     setNotes,
   } = useSchedule();
 
   const meta = programWeeks[metaKey(week, program.id)] ?? { participants: 0, notes: "" };
-  const assigned = slots.filter((s) => s.staffId).length;
-  const ratio = ratioLabel(meta.participants, assigned);
-  const heavy = assigned > 0 && meta.participants / assigned > 8;
+  const uniqueStaff = new Set(rowAssignments.map((a) => a.staffId)).size;
+  const ratio = ratioLabel(meta.participants, uniqueStaff);
+  const heavy = uniqueStaff > 0 && meta.participants / uniqueStaff > 8;
 
   return (
     <div className="contents">
@@ -67,44 +70,23 @@ function ProgramRow({ program, week, slots }: { program: Program; week: WeekKey;
             heavy && "font-medium text-destructive",
           )}
         >
-          {assigned} staff · {ratio}
+          {uniqueStaff} staff · {ratio}
         </p>
       </div>
 
-      {Array.from({ length: MAX_COLUMNS }, (_, i) => {
-        const slot = slots[i];
-        if (slot) {
-          return (
-            <RoleSlotCell
-              key={slot.id}
-              slot={slot}
-              staff={staff}
-              color={program.color}
-              conflict={doubleBookedIds.has(slot.id)}
-              onClear={() => assignSlot(slot.id, null)}
-              onRename={(label) => updateSlot(slot.id, { label })}
-              onRemove={() => removeSlot(slot.id)}
-            />
-          );
-        }
-        return (
-          <div
-            key={`empty-${program.id}-${i}`}
-            className="flex items-center justify-center border-b border-r border-border p-2"
-          >
-            {i === slots.length && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 text-[11px] text-muted-foreground"
-                onClick={() => addSlot(week, program.id, "Role")}
-              >
-                <Plus className="size-3" /> Add role slot
-              </Button>
-            )}
-          </div>
-        );
-      })}
+      {DAY_INDEXES.map((day) => (
+        <DayCell
+          key={day}
+          week={week}
+          programId={program.id}
+          day={day}
+          assignments={rowAssignments.filter((a) => a.day === day)}
+          staff={staff}
+          color={program.color}
+          doubleBookedIds={doubleBookedIds}
+          onRemove={removeAssignment}
+        />
+      ))}
 
       <div className="border-b border-border p-2">
         <Textarea
@@ -112,7 +94,7 @@ function ProgramRow({ program, week, slots }: { program: Program; week: WeekKey;
           onChange={(e) => setNotes(week, program.id, e.target.value)}
           placeholder="Weekly notes…"
           aria-label={`${program.name} weekly notes`}
-          className="min-h-16 resize-none border-0 bg-transparent p-1 text-xs shadow-none focus-visible:ring-0"
+          className="min-h-20 resize-none border-0 bg-transparent p-1 text-xs shadow-none focus-visible:ring-0"
         />
       </div>
     </div>
@@ -120,21 +102,21 @@ function ProgramRow({ program, week, slots }: { program: Program; week: WeekKey;
 }
 
 export function RosterGrid({ week }: { week: WeekKey }) {
-  const { programs, slots } = useSchedule();
-  const weekSlots = slots.filter((s) => s.week === week);
+  const { programs, assignments } = useSchedule();
+  const weekAssignments = assignments.filter((a) => a.week === week);
 
   return (
-    <div className="min-w-[64rem] overflow-hidden rounded-lg border border-border bg-card">
-      <div className="grid grid-cols-[14rem_repeat(4,minmax(0,1fr))_18rem]">
+    <div className="min-w-[68rem] overflow-hidden rounded-lg border border-border bg-card">
+      <div className="grid grid-cols-[14rem_repeat(5,minmax(0,1fr))_16rem]">
         <div className="border-b border-r border-border bg-muted/50 p-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
           Program
         </div>
-        {Array.from({ length: MAX_COLUMNS }, (_, i) => (
+        {DAY_LABELS.map((label) => (
           <div
-            key={i}
+            key={label}
             className="border-b border-r border-border bg-muted/50 p-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
           >
-            Role slot {i + 1}
+            {label}
           </div>
         ))}
         <div className="border-b border-border bg-muted/50 p-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
@@ -146,7 +128,7 @@ export function RosterGrid({ week }: { week: WeekKey }) {
             key={p.id}
             program={p}
             week={week}
-            slots={weekSlots.filter((s) => s.programId === p.id)}
+            rowAssignments={weekAssignments.filter((a) => a.programId === p.id)}
           />
         ))}
       </div>
