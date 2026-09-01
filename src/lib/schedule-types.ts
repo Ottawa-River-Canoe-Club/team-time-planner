@@ -48,6 +48,7 @@ export const PROGRAM_SWATCHES = [
 
 const FALLBACK_PROGRAM: Program = {
   id: "unknown",
+  typeId: "camp",
   name: "Unassigned program",
   short: "—",
   color: "oklch(0.55 0.02 260)",
