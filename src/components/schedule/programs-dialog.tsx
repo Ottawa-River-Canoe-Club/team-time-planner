@@ -49,7 +49,7 @@ export function ProgramsDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const { programs, slots, addProgram, updateProgram, removeProgram } = useSchedule();
+  const { programs, assignments, addProgram, updateProgram, removeProgram } = useSchedule();
   const [name, setName] = useState("");
   const [color, setColor] = useState(PROGRAM_SWATCHES[4]!);
 
@@ -81,7 +81,7 @@ export function ProgramsDialog({
 
         <div className="space-y-3">
           {programs.map((p) => {
-            const used = slots.filter((s) => s.programId === p.id).length;
+            const used = assignments.filter((a) => a.programId === p.id).length;
             return (
               <div key={p.id} className="rounded-lg border border-border p-3">
                 <div className="flex items-center gap-2">
@@ -109,7 +109,7 @@ export function ProgramsDialog({
                     className="shrink-0 text-destructive hover:text-destructive"
                     onClick={() => {
                       removeProgram(p.id);
-                      toast.success(`${p.name} deleted${used ? ` · ${used} slot(s) removed` : ""}`);
+                      toast.success(`${p.name} deleted${used ? ` · ${used} assignment(s) removed` : ""}`);
                     }}
                   >
                     <Trash2 className="size-4" />
@@ -117,7 +117,7 @@ export function ProgramsDialog({
                 </div>
                 <div className="mt-2 flex items-center justify-between gap-3">
                   <Swatches value={p.color} onChange={(c) => updateProgram(p.id, { color: c })} />
-                  <span className="text-[11px] text-muted-foreground">{used} slots</span>
+                  <span className="text-[11px] text-muted-foreground">{used} assignments</span>
                 </div>
               </div>
             );

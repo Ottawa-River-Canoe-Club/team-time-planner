@@ -5,29 +5,28 @@ import {
   STAFF,
   metaKey,
   seedRoster,
+  type Assignment,
   type Program,
   type ProgramWeek,
-  type RoleSlot,
   type Staff,
 } from "@/lib/schedule-types";
 
 let counter = 0;
-const nextId = () => `slot-${Date.now()}-${counter++}`;
+const nextId = () => `a-${Date.now()}-${counter++}`;
 
 export function ScheduleProvider({ children }: { children: ReactNode }) {
   const seed = useMemo(() => seedRoster(), []);
   const [staff] = useState<Staff[]>(STAFF);
   const [programs, setPrograms] = useState<Program[]>(DEFAULT_PROGRAMS);
-  const [slots, setSlots] = useState<RoleSlot[]>(seed.slots);
+  const [assignments, setAssignments] = useState<Assignment[]>(seed.assignments);
   const [programWeeks, setProgramWeeks] = useState<Record<string, ProgramWeek>>(seed.programWeeks);
   const [currentStaffId, setCurrentStaffId] = useState<string>(STAFF[4]?.id ?? "");
 
   const value = useMemo<ScheduleContextValue>(() => {
     const seen = new Map<string, string[]>();
-    for (const slot of slots) {
-      if (!slot.staffId) continue;
-      const key = `${slot.week}|${slot.staffId}`;
-      seen.set(key, [...(seen.get(key) ?? []), slot.id]);
+    for (const a of assignments) {
+      const key = `${a.week}|${a.day}|${a.staffId}`;
+      seen.set(key, [...(seen.get(key) ?? []), a.id]);
     }
     const doubleBookedIds = new Set<string>();
     for (const ids of seen.values()) {
@@ -44,21 +43,24 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
     return {
       staff,
       programs,
-      slots,
+      assignments,
       programWeeks,
       currentStaffId,
       setCurrentStaffId,
       doubleBookedIds,
-      addSlot: (week, programId, label) =>
-        setSlots((previous) => [
+      addAssignment: (week, programId, day, staffId) => {
+        const exists = assignments.some(
+          (a) =>
+            a.week === week && a.programId === programId && a.day === day && a.staffId === staffId,
+        );
+        if (exists) return false;
+        setAssignments((previous) => [
           ...previous,
-          { id: nextId(), week, programId, label, staffId: null },
-        ]),
-      updateSlot: (id, patch) =>
-        setSlots((previous) => previous.map((s) => (s.id === id ? { ...s, ...patch } : s))),
-      removeSlot: (id) => setSlots((previous) => previous.filter((s) => s.id !== id)),
-      assignSlot: (id, staffId) =>
-        setSlots((previous) => previous.map((s) => (s.id === id ? { ...s, staffId } : s))),
+          { id: nextId(), week, programId, day, staffId },
+        ]);
+        return true;
+      },
+      removeAssignment: (id) => setAssignments((previous) => previous.filter((a) => a.id !== id)),
       setParticipants: (week, programId, participants) =>
         patchMeta(week, programId, { participants }),
       setNotes: (week, programId, notes) => patchMeta(week, programId, { notes }),
@@ -67,10 +69,10 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
         setPrograms((previous) => previous.map((p) => (p.id === id ? { ...p, ...patch } : p))),
       removeProgram: (id) => {
         setPrograms((previous) => previous.filter((p) => p.id !== id));
-        setSlots((previous) => previous.filter((s) => s.programId !== id));
+        setAssignments((previous) => previous.filter((a) => a.programId !== id));
       },
     };
-  }, [staff, programs, slots, programWeeks, currentStaffId]);
+  }, [staff, programs, assignments, programWeeks, currentStaffId]);
 
   return <ScheduleContext.Provider value={value}>{children}</ScheduleContext.Provider>;
 }

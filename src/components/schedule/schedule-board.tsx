@@ -28,27 +28,30 @@ import {
 import { cn } from "@/lib/utils";
 import { useSchedule } from "@/context/schedule-context";
 import {
+  DAY_LABELS,
   STAFF_ROLES,
   chipStyle,
   parseWeek,
+  programById,
   weekKey,
   weekLabel,
   weekStart,
+  type DayIndex,
 } from "@/lib/schedule-types";
 import { StaffCard } from "./staff-card";
 import { RosterGrid } from "./roster-grid";
 import { ProgramsDialog } from "./programs-dialog";
 
-/** Prefer a role slot under the pointer over anything else. */
+/** Prefer a day cell under the pointer over anything else. */
 const collisionDetection: CollisionDetection = (args) => {
   const pointer = pointerWithin(args);
   const collisions = pointer.length > 0 ? pointer : rectIntersection(args);
-  const slot = collisions.find((c) => String(c.id).startsWith("slot:"));
-  return slot ? [slot] : collisions;
+  const cell = collisions.find((c) => String(c.id).startsWith("cell:"));
+  return cell ? [cell] : collisions;
 };
 
 export function ScheduleBoard() {
-  const { staff, programs, slots, assignSlot } = useSchedule();
+  const { staff, programs, assignments, addAssignment } = useSchedule();
   const [week, setWeek] = useState<string>(() => weekKey(new Date()));
   const [query, setQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
@@ -61,9 +64,12 @@ export function ScheduleBoard() {
   );
 
   const monday = useMemo(() => parseWeek(week), [week]);
-  const weekSlots = useMemo(() => slots.filter((s) => s.week === week), [slots, week]);
-  const filled = weekSlots.filter((s) => s.staffId).length;
-  const open = weekSlots.length - filled;
+  const weekAssignments = useMemo(
+    () => assignments.filter((a) => a.week === week),
+    [assignments, week],
+  );
+  const filled = weekAssignments.length;
+  const people = new Set(weekAssignments.map((a) => a.staffId)).size;
 
   const filteredStaff = staff.filter(
     (s) =>
@@ -93,26 +99,29 @@ export function ScheduleBoard() {
     if (!over) return;
     const from = active.data.current as { type: "staff"; staffId: string } | undefined;
     const target = over.data.current as
-      | { type: "slot"; slotId: string }
+      | { type: "cell"; week: string; programId: string; day: DayIndex }
       | { type: "unassign" }
       | undefined;
-    if (!from || from.type !== "staff" || !target) return;
+    if (!from || from.type !== "staff" || !target || target.type !== "cell") return;
 
-    if (target.type === "unassign") return;
-
-    const slot = slots.find((s) => s.id === target.slotId);
-    if (!slot) return;
     const person = staff.find((s) => s.id === from.staffId);
-    const alreadyThisWeek = slots.some(
-      (s) => s.week === slot.week && s.staffId === from.staffId && s.id !== slot.id,
+    const added = addAssignment(target.week, target.programId, target.day, from.staffId);
+    const program = programById(programs, target.programId);
+    const dayName = DAY_LABELS[target.day];
+    if (!added) {
+      toast.info(`${person?.name ?? "Staff"} is already on ${program.name} ${dayName}.`);
+      return;
+    }
+    const clash = assignments.some(
+      (a) => a.week === target.week && a.day === target.day && a.staffId === from.staffId,
     );
-    assignSlot(slot.id, from.staffId);
-    if (alreadyThisWeek) {
-      toast.warning(`${person?.name ?? "Staff"} is now in two slots this week.`);
+    if (clash) {
+      toast.warning(`${person?.name ?? "Staff"} is now in two programs on ${dayName}.`);
     } else {
-      toast.success(`${person?.name ?? "Staff"} → ${slot.label}`);
+      toast.success(`${person?.name ?? "Staff"} → ${program.name} · ${dayName}`);
     }
   };
+
 
   return (
     <DndContext
@@ -129,7 +138,7 @@ export function ScheduleBoard() {
             <div>
               <h2 className="text-sm font-semibold text-foreground">Staff</h2>
               <p className="text-xs text-muted-foreground">
-                Drag someone into a role slot for this week.
+                Drag someone into a program's day cell for this week.
               </p>
             </div>
 
@@ -166,7 +175,7 @@ export function ScheduleBoard() {
                 <StaffCard
                   key={s.id}
                   staff={s}
-                  shiftCount={weekSlots.filter((sl) => sl.staffId === s.id).length}
+                  shiftCount={weekAssignments.filter((a) => a.staffId === s.id).length}
                 />
               ))}
               {filteredStaff.length === 0 && (
@@ -183,7 +192,7 @@ export function ScheduleBoard() {
                 unassignOver && "border-destructive bg-destructive/10 text-destructive",
               )}
             >
-              <Trash2 className="size-3.5 shrink-0" aria-hidden /> Clear a slot with its × button
+              <Trash2 className="size-3.5 shrink-0" aria-hidden /> Remove someone with the × on their card
             </div>
           </div>
         </aside>
@@ -216,7 +225,7 @@ export function ScheduleBoard() {
               <Palette className="size-4" /> Manage programs
             </Button>
             <span className="text-xs text-muted-foreground">
-              {filled} filled{open > 0 ? ` · ${open} open` : ""}
+              {filled} assignment{filled === 1 ? "" : "s"} · {people} staff
             </span>
 
             <div className="ml-auto flex flex-wrap items-center gap-2">
