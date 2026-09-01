@@ -14,8 +14,19 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/core";
 import { addWeeks } from "date-fns";
-import { ChevronLeft, ChevronRight, Palette, Search, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Eraser, Palette, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -51,11 +62,12 @@ const collisionDetection: CollisionDetection = (args) => {
 };
 
 export function ScheduleBoard() {
-  const { staff, programs, assignments, addAssignment } = useSchedule();
+  const { staff, programs, assignments, addAssignment, clearWeek, clearAll } = useSchedule();
   const [week, setWeek] = useState<string>(() => weekKey(new Date()));
   const [query, setQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [managing, setManaging] = useState(false);
+  const [clearing, setClearing] = useState(false);
   const [dragLabel, setDragLabel] = useState<string | null>(null);
 
   const sensors = useSensors(
