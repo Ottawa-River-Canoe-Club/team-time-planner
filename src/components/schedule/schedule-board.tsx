@@ -175,7 +175,7 @@ export function ScheduleBoard() {
                 <StaffCard
                   key={s.id}
                   staff={s}
-                  shiftCount={weekSlots.filter((sl) => sl.staffId === s.id).length}
+                  shiftCount={weekAssignments.filter((a) => a.staffId === s.id).length}
                 />
               ))}
               {filteredStaff.length === 0 && (
