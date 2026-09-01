@@ -101,8 +101,9 @@ function ProgramRow({
   );
 }
 
-export function RosterGrid({ week }: { week: WeekKey }) {
-  const { programs, assignments } = useSchedule();
+export function RosterGrid({ week, typeId }: { week: WeekKey; typeId: string }) {
+  const { programs: allPrograms, assignments } = useSchedule();
+  const programs = allPrograms.filter((p) => p.typeId === typeId);
   const weekAssignments = assignments.filter((a) => a.week === week);
 
   return (
