@@ -2,6 +2,7 @@ import { useMemo, useState, type ReactNode } from "react";
 import { ScheduleContext, type ScheduleContextValue } from "./schedule-context";
 import {
   DEFAULT_PROGRAMS,
+  SCHEDULE_TYPES,
   STAFF,
   metaKey,
   seedRoster,
@@ -48,6 +49,8 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
       programWeeks,
       currentStaffId,
       setCurrentStaffId,
+      activeTypeId,
+      setActiveTypeId,
       doubleBookedIds,
       addAssignment: (week, programId, day, staffId) => {
         const exists = assignments.some(
@@ -83,7 +86,7 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
         setAssignments((previous) => previous.filter((a) => a.programId !== id));
       },
     };
-  }, [staff, programs, assignments, programWeeks, currentStaffId]);
+  }, [staff, programs, assignments, programWeeks, currentStaffId, activeTypeId]);
 
   return <ScheduleContext.Provider value={value}>{children}</ScheduleContext.Provider>;
 }
