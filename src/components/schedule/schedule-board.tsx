@@ -113,6 +113,7 @@ export function ScheduleBoard() {
   );
 
   const monday = useMemo(() => parseWeek(week), [week]);
+  const activeDayCount = scheduleTypes.find((t) => t.id === activeTypeId)?.dayCount ?? 5;
   const weekAssignments = useMemo(
     () => assignments.filter((a) => a.week === week),
     [assignments, week],
@@ -318,7 +319,7 @@ export function ScheduleBoard() {
                 This week
               </Button>
             </div>
-            <h1 className="text-base font-semibold text-foreground">{weekLabel(monday)}</h1>
+            <h1 className="text-base font-semibold text-foreground">{weekLabel(monday, activeDayCount)}</h1>
             <Button variant="outline" size="sm" onClick={() => setManaging(true)}>
               <Palette className="size-4" /> Manage programs
             </Button>

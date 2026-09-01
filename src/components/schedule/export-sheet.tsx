@@ -1,7 +1,7 @@
 import { useSchedule } from "@/context/schedule-context";
 import {
-  DAY_INDEXES,
   DAY_LABELS,
+  dayIndexes,
   blockStyle,
   metaKey,
   parseWeek,
@@ -24,19 +24,26 @@ export function ExportSheet({
   typeId: string;
   typeName: string;
 }) {
-  const { programs, assignments, programWeeks, staff } = useSchedule();
+  const { programs, assignments, programWeeks, staff, scheduleTypes } = useSchedule();
+  const dayCount = scheduleTypes.find((t) => t.id === typeId)?.dayCount ?? 5;
   const rows = programs.filter((p) => p.typeId === typeId);
   const weekAssignments = assignments.filter((a) => a.week === week);
 
   return (
-    <div className="w-[1100px] bg-card p-6 text-foreground">
+    <div
+      className="bg-card p-6 text-foreground"
+      style={{ width: dayCount === 7 ? 1400 : 1100 }}
+    >
       <div className="mb-3">
         <h2 className="text-lg font-semibold">{typeName}</h2>
-        <p className="text-xs text-muted-foreground">{weekLabel(parseWeek(week))}</p>
+        <p className="text-xs text-muted-foreground">{weekLabel(parseWeek(week), dayCount)}</p>
       </div>
       <div className="overflow-hidden rounded-lg border border-border">
-        <div className="grid grid-cols-[12rem_repeat(5,minmax(0,1fr))_14rem]">
-          {["Program", ...DAY_LABELS, "Weekly notes"].map((label) => (
+        <div
+          className="grid"
+          style={{ gridTemplateColumns: `12rem repeat(${dayCount}, minmax(0, 1fr)) 14rem` }}
+        >
+          {["Program", ...DAY_LABELS.slice(0, dayCount), "Weekly notes"].map((label) => (
             <div
               key={label}
               className="border-b border-r border-border bg-muted/50 p-2 text-[10px] font-medium uppercase tracking-wide text-muted-foreground last:border-r-0"
@@ -65,7 +72,7 @@ export function ExportSheet({
                   </p>
                 </div>
 
-                {DAY_INDEXES.map((day) => (
+                {dayIndexes(dayCount).map((day) => (
                   <div
                     key={day}
                     className="flex min-h-16 flex-col gap-1 border-b border-r border-border p-1.5"

@@ -4,8 +4,8 @@ import { cn } from "@/lib/utils";
 import { useSchedule } from "@/context/schedule-context";
 import { DayCell } from "./day-cell";
 import {
-  DAY_INDEXES,
   DAY_LABELS,
+  dayIndexes,
   metaKey,
   ratioLabel,
   type Assignment,
@@ -17,10 +17,12 @@ function ProgramRow({
   program,
   week,
   rowAssignments,
+  dayCount,
 }: {
   program: Program;
   week: WeekKey;
   rowAssignments: Assignment[];
+  dayCount: 5 | 7;
 }) {
   const {
     staff,
@@ -74,7 +76,7 @@ function ProgramRow({
         </p>
       </div>
 
-      {DAY_INDEXES.map((day) => (
+      {dayIndexes(dayCount).map((day) => (
         <DayCell
           key={day}
           week={week}
@@ -102,17 +104,26 @@ function ProgramRow({
 }
 
 export function RosterGrid({ week, typeId }: { week: WeekKey; typeId: string }) {
-  const { programs: allPrograms, assignments } = useSchedule();
+  const { programs: allPrograms, assignments, scheduleTypes } = useSchedule();
+  const dayCount = scheduleTypes.find((t) => t.id === typeId)?.dayCount ?? 5;
   const programs = allPrograms.filter((p) => p.typeId === typeId);
   const weekAssignments = assignments.filter((a) => a.week === week);
 
   return (
-    <div className="min-w-[68rem] overflow-hidden rounded-lg border border-border bg-card">
-      <div className="grid grid-cols-[14rem_repeat(5,minmax(0,1fr))_16rem]">
+    <div
+      className="overflow-hidden rounded-lg border border-border bg-card"
+      style={{ minWidth: dayCount === 7 ? "86rem" : "68rem" }}
+    >
+      <div
+        className="grid"
+        style={{
+          gridTemplateColumns: `14rem repeat(${dayCount}, minmax(0, 1fr)) 16rem`,
+        }}
+      >
         <div className="border-b border-r border-border bg-muted/50 p-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
           Program
         </div>
-        {DAY_LABELS.map((label) => (
+        {DAY_LABELS.slice(0, dayCount).map((label) => (
           <div
             key={label}
             className="border-b border-r border-border bg-muted/50 p-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground"
@@ -129,6 +140,7 @@ export function RosterGrid({ week, typeId }: { week: WeekKey; typeId: string }) 
             key={p.id}
             program={p}
             week={week}
+            dayCount={dayCount}
             rowAssignments={weekAssignments.filter((a) => a.programId === p.id)}
           />
         ))}

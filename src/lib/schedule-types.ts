@@ -6,11 +6,13 @@ export type ScheduleTypeId = string;
 export type ScheduleType = {
   id: ScheduleTypeId;
   name: string;
+  /** 5 = Monday–Friday, 7 = Monday–Sunday */
+  dayCount: 5 | 7;
 };
 
 export const DEFAULT_SCHEDULE_TYPES: ScheduleType[] = [
-  { id: "camp", name: "Camp Schedule" },
-  { id: "dock", name: "Dock Duty" },
+  { id: "camp", name: "Camp Schedule", dayCount: 5 },
+  { id: "dock", name: "Dock Duty", dayCount: 7 },
 ];
 
 export type Program = {
@@ -129,20 +131,33 @@ export function weekNumber(monday: Date) {
   return differenceInCalendarWeeks(monday, start, { weekStartsOn: 1 }) + 1;
 }
 
-/** e.g. "Week 2: July 6 – July 10" (Monday to Friday of the camp week). */
-export function weekLabel(monday: Date) {
-  const range = `${format(monday, "MMMM d")} – ${format(addDays(monday, 4), "MMMM d")}`;
+/** e.g. "Week 2: July 6 – July 10" (Monday to the last day of the week). */
+export function weekLabel(monday: Date, dayCount: 5 | 7 = 5) {
+  const range = `${format(monday, "MMMM d")} – ${format(addDays(monday, dayCount - 1), "MMMM d")}`;
   const n = weekNumber(monday);
   return n >= 1 && n <= 12 ? `Week ${n}: ${range}` : `Off-season: ${range}`;
 }
 
-export const weekdays = (monday: Date) => Array.from({ length: 5 }, (_, i) => addDays(monday, i));
+export const weekdays = (monday: Date, dayCount: 5 | 7 = 5) =>
+  Array.from({ length: dayCount }, (_, i) => addDays(monday, i));
 
 /* -------------------------------- roster ---------------------------------- */
 
-export const DAY_LABELS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"] as const;
-export const DAY_INDEXES = [0, 1, 2, 3, 4] as const;
+export const DAY_LABELS = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
+] as const;
+export const DAY_INDEXES = [0, 1, 2, 3, 4, 5, 6] as const;
 export type DayIndex = (typeof DAY_INDEXES)[number];
+
+/** Day indexes visible for a schedule type (Mon–Fri or Mon–Sun). */
+export const dayIndexes = (dayCount: 5 | 7 = 5) =>
+  DAY_INDEXES.slice(0, dayCount) as readonly DayIndex[];
 
 export type Assignment = {
   id: string;
