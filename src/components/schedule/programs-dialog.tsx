@@ -69,6 +69,7 @@ export function ProgramsDialog({
     removeProgram,
   } = useSchedule();
   const [typeName, setTypeName] = useState("");
+  const [typeDays, setTypeDays] = useState<"5" | "7">("7");
   const [name, setName] = useState("");
   const [typeId, setTypeId] = useState(activeTypeId);
   const [color, setColor] = useState(PROGRAM_SWATCHES[4]!);
@@ -113,7 +114,19 @@ export function ProgramsDialog({
                   onChange={(e) => updateScheduleType(t.id, { name: e.target.value })}
                   className="h-8"
                 />
-                <span className="w-24 shrink-0 text-right text-[11px] text-muted-foreground">
+                <Select
+                  value={String(t.dayCount)}
+                  onValueChange={(v) => updateScheduleType(t.id, { dayCount: Number(v) as 5 | 7 })}
+                >
+                  <SelectTrigger className="h-8 w-32 shrink-0" aria-label={`${t.name} days`}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="5">Mon–Fri</SelectItem>
+                    <SelectItem value="7">Mon–Sun</SelectItem>
+                  </SelectContent>
+                </Select>
+                <span className="w-14 shrink-0 text-right text-[11px] text-muted-foreground">
                   {programs.filter((p) => p.typeId === t.id).length} rows
                 </span>
                 <Button
@@ -144,11 +157,20 @@ export function ProgramsDialog({
                 onKeyDown={(e) => {
                   if (e.key !== "Enter") return;
                   if (!typeName.trim()) return;
-                  addScheduleType(typeName);
+                  addScheduleType(typeName, Number(typeDays) as 5 | 7);
                   setTypeName("");
                 }}
                 className="h-8"
               />
+              <Select value={typeDays} onValueChange={(v) => setTypeDays(v as "5" | "7")}>
+                <SelectTrigger className="h-8 w-32 shrink-0" aria-label="New schedule type days">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="5">Mon–Fri</SelectItem>
+                  <SelectItem value="7">Mon–Sun</SelectItem>
+                </SelectContent>
+              </Select>
               <Button
                 size="sm"
                 onClick={() => {
@@ -156,7 +178,7 @@ export function ProgramsDialog({
                     toast.error("Give the schedule type a name.");
                     return;
                   }
-                  addScheduleType(typeName);
+                  addScheduleType(typeName, Number(typeDays) as 5 | 7);
                   toast.success(`${typeName.trim()} added`);
                   setTypeName("");
                 }}

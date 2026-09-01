@@ -19,7 +19,7 @@ export type ScheduleContextValue = {
   setCurrentStaffId: (id: string) => void;
   /** All schedule types (operational areas) */
   scheduleTypes: ScheduleType[];
-  addScheduleType: (name: string) => void;
+  addScheduleType: (name: string, dayCount?: 5 | 7) => void;
   updateScheduleType: (id: string, patch: Partial<Omit<ScheduleType, "id">>) => void;
   removeScheduleType: (id: string) => void;
   /** Currently selected schedule type (operational area) */

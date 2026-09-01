@@ -55,12 +55,12 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
       currentStaffId,
       setCurrentStaffId,
       scheduleTypes,
-      addScheduleType: (name) => {
+      addScheduleType: (name, dayCount = 7) => {
         const trimmed = name.trim();
         if (!trimmed) return;
         let id = slugify(trimmed);
         while (scheduleTypes.some((t) => t.id === id)) id = `${id}-1`;
-        setScheduleTypes((previous) => [...previous, { id, name: trimmed }]);
+        setScheduleTypes((previous) => [...previous, { id, name: trimmed, dayCount }]);
         setActiveTypeId(id);
       },
       updateScheduleType: (id, patch) =>
