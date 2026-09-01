@@ -2,13 +2,15 @@ import { useMemo, useState, type ReactNode } from "react";
 import { ScheduleContext, type ScheduleContextValue } from "./schedule-context";
 import {
   DEFAULT_PROGRAMS,
-  SCHEDULE_TYPES,
+  DEFAULT_SCHEDULE_TYPES,
   STAFF,
   metaKey,
   seedRoster,
+  slugify,
   type Assignment,
   type Program,
   type ProgramWeek,
+  type ScheduleType,
   type Staff,
 } from "@/lib/schedule-types";
 
@@ -22,7 +24,10 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
   const [assignments, setAssignments] = useState<Assignment[]>(seed.assignments);
   const [programWeeks, setProgramWeeks] = useState<Record<string, ProgramWeek>>(seed.programWeeks);
   const [currentStaffId, setCurrentStaffId] = useState<string>(STAFF[4]?.id ?? "");
-  const [activeTypeId, setActiveTypeId] = useState<string>(SCHEDULE_TYPES[0]?.id ?? "camp");
+  const [scheduleTypes, setScheduleTypes] = useState<ScheduleType[]>(DEFAULT_SCHEDULE_TYPES);
+  const [activeTypeId, setActiveTypeId] = useState<string>(
+    DEFAULT_SCHEDULE_TYPES[0]?.id ?? "camp",
+  );
 
   const value = useMemo<ScheduleContextValue>(() => {
     const seen = new Map<string, string[]>();
@@ -49,6 +54,27 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
       programWeeks,
       currentStaffId,
       setCurrentStaffId,
+      scheduleTypes,
+      addScheduleType: (name) => {
+        const trimmed = name.trim();
+        if (!trimmed) return;
+        let id = slugify(trimmed);
+        while (scheduleTypes.some((t) => t.id === id)) id = `${id}-1`;
+        setScheduleTypes((previous) => [...previous, { id, name: trimmed }]);
+        setActiveTypeId(id);
+      },
+      updateScheduleType: (id, patch) =>
+        setScheduleTypes((previous) => previous.map((t) => (t.id === id ? { ...t, ...patch } : t))),
+      removeScheduleType: (id) => {
+        const removedPrograms = programs.filter((p) => p.typeId === id).map((p) => p.id);
+        setScheduleTypes((previous) => {
+          const next = previous.filter((t) => t.id !== id);
+          setActiveTypeId((current) => (current === id ? (next[0]?.id ?? "") : current));
+          return next;
+        });
+        setPrograms((previous) => previous.filter((p) => p.typeId !== id));
+        setAssignments((previous) => previous.filter((a) => !removedPrograms.includes(a.programId)));
+      },
       activeTypeId,
       setActiveTypeId,
       doubleBookedIds,
@@ -86,7 +112,7 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
         setAssignments((previous) => previous.filter((a) => a.programId !== id));
       },
     };
-  }, [staff, programs, assignments, programWeeks, currentStaffId, activeTypeId]);
+  }, [staff, programs, scheduleTypes, assignments, programWeeks, currentStaffId, activeTypeId]);
 
   return <ScheduleContext.Provider value={value}>{children}</ScheduleContext.Provider>;
 }

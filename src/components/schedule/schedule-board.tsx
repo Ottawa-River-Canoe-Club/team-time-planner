@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -17,7 +17,6 @@ import { addWeeks } from "date-fns";
 import {
   ChevronLeft,
   ChevronRight,
-  ChevronDown,
   Eraser,
   FileDown,
   Loader2,
@@ -41,6 +40,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -52,7 +60,6 @@ import { useSchedule } from "@/context/schedule-context";
 import { exportNodesToPdf } from "@/lib/export-pdf";
 import {
   DAY_LABELS,
-  SCHEDULE_TYPES,
   STAFF_ROLES,
   chipStyle,
   parseWeek,
@@ -82,6 +89,7 @@ export function ScheduleBoard() {
     assignments,
     activeTypeId,
     setActiveTypeId,
+    scheduleTypes,
     addAssignment,
     clearWeek,
     clearAll,
@@ -93,7 +101,10 @@ export function ScheduleBoard() {
   const [clearing, setClearing] = useState(false);
   const [dragLabel, setDragLabel] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
-  const exportMenuRef = useRef<HTMLDetailsElement>(null);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportScope, setExportScope] = useState<"current" | "all">("current");
+  const [exportWeeks, setExportWeeks] = useState(1);
+  const [pending, setPending] = useState<{ types: string[]; weeks: string[] } | null>(null);
   const exportRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const sensors = useSensors(
@@ -161,24 +172,54 @@ export function ScheduleBoard() {
   };
 
 
-  const runExport = async (mode: "current" | "all") => {
-    if (exportMenuRef.current) exportMenuRef.current.open = false;
-    const types = mode === "current" ? SCHEDULE_TYPES.filter((t) => t.id === activeTypeId) : SCHEDULE_TYPES;
-    const nodes = types
-      .map((t) => exportRefs.current[t.id])
-      .filter((n): n is HTMLDivElement => Boolean(n));
-    if (nodes.length === 0) return;
-    setExporting(true);
-    try {
-      const suffix = mode === "current" ? activeTypeId : "all-schedules";
-      await exportNodesToPdf(nodes, `roster-${week}-${suffix}.pdf`);
-      toast.success("PDF exported.");
-    } catch {
-      toast.error("Could not generate the PDF.");
-    } finally {
-      setExporting(false);
+  const startExport = () => {
+    const types =
+      exportScope === "current"
+        ? scheduleTypes.filter((t) => t.id === activeTypeId).map((t) => t.id)
+        : scheduleTypes.map((t) => t.id);
+    const count = Math.min(Math.max(Math.round(exportWeeks) || 1, 1), 26);
+    const weeks = Array.from({ length: count }, (_, i) => weekKey(addWeeks(monday, i)));
+    if (types.length === 0) {
+      toast.error("Nothing to export.");
+      return;
     }
+    setExportOpen(false);
+    setExporting(true);
+    setPending({ types, weeks });
   };
+
+  useEffect(() => {
+    if (!pending) return;
+    let cancelled = false;
+    const run = async () => {
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r(null))));
+      if (cancelled) return;
+      const nodes = pending.weeks
+        .flatMap((w) => pending.types.map((t) => exportRefs.current[`${t}|${w}`]))
+        .filter((n): n is HTMLDivElement => Boolean(n));
+      try {
+        if (nodes.length === 0) throw new Error("nothing to capture");
+        const first = pending.weeks[0]!;
+        const span = pending.weeks.length > 1 ? `${pending.weeks.length}wk` : "1wk";
+        const suffix = exportScope === "current" ? activeTypeId : "all-schedules";
+        await exportNodesToPdf(nodes, `roster-${first}-${span}-${suffix}.pdf`);
+        toast.success(
+          `Exported ${nodes.length} schedule${nodes.length === 1 ? "" : "s"} to PDF.`,
+        );
+      } catch {
+        toast.error("Could not generate the PDF.");
+      } finally {
+        if (!cancelled) {
+          setExporting(false);
+          setPending(null);
+        }
+      }
+    };
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [pending, activeTypeId, exportScope]);
 
   return (
     <DndContext
@@ -318,37 +359,19 @@ export function ScheduleBoard() {
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
-            <details ref={exportMenuRef} className="group relative">
-              <summary className="list-none [&::-webkit-details-marker]:hidden">
-                <Button asChild variant="outline" size="sm">
-                  <span aria-disabled={exporting} className={cn(exporting && "pointer-events-none opacity-50")}>
-                  {exporting ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    <FileDown className="size-4" />
-                  )}
-                  Export to PDF
-                    <ChevronDown className="size-3.5 transition-transform group-open:rotate-180" />
-                  </span>
-                </Button>
-              </summary>
-              <div className="absolute left-0 z-50 mt-1 min-w-56 rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md">
-                <Button
-                  variant="ghost"
-                  className="h-auto w-full justify-start px-2 py-1.5 text-sm font-normal"
-                  onClick={() => void runExport("current")}
-                >
-                  Export current schedule
-                </Button>
-                <Button
-                  variant="ghost"
-                  className="h-auto w-full justify-start px-2 py-1.5 text-sm font-normal"
-                  onClick={() => void runExport("all")}
-                >
-                  Export amalgamated schedule
-                </Button>
-              </div>
-            </details>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={exporting}
+              onClick={() => setExportOpen(true)}
+            >
+              {exporting ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <FileDown className="size-4" />
+              )}
+              Export to PDF
+            </Button>
             <span className="text-xs text-muted-foreground">
               {filled} assignment{filled === 1 ? "" : "s"} · {people} staff
             </span>
@@ -373,7 +396,7 @@ export function ScheduleBoard() {
 
           <Tabs value={activeTypeId} onValueChange={setActiveTypeId}>
             <TabsList>
-              {SCHEDULE_TYPES.map((t) => (
+              {scheduleTypes.map((t) => (
                 <TabsTrigger key={t.id} value={t.id}>
                   {t.name}
                 </TabsTrigger>
@@ -388,16 +411,22 @@ export function ScheduleBoard() {
       </div>
 
       <div aria-hidden className="pointer-events-none fixed left-[-20000px] top-0 opacity-100">
-        {SCHEDULE_TYPES.map((t) => (
-          <div
-            key={t.id}
-            ref={(node) => {
-              exportRefs.current[t.id] = node;
-            }}
-          >
-            <ExportSheet week={week} typeId={t.id} typeName={t.name} />
-          </div>
-        ))}
+        {(pending?.weeks ?? [week]).map((w) =>
+          (pending?.types ?? scheduleTypes.map((t) => t.id)).map((typeId) => {
+            const type = scheduleTypes.find((t) => t.id === typeId);
+            if (!type) return null;
+            return (
+              <div
+                key={`${typeId}|${w}`}
+                ref={(node) => {
+                  exportRefs.current[`${typeId}|${w}`] = node;
+                }}
+              >
+                <ExportSheet week={w} typeId={type.id} typeName={type.name} />
+              </div>
+            );
+          }),
+        )}
       </div>
 
       <DragOverlay dropAnimation={null}>
@@ -407,6 +436,80 @@ export function ScheduleBoard() {
           </div>
         )}
       </DragOverlay>
+
+      <Dialog open={exportOpen} onOpenChange={setExportOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Export to PDF</DialogTitle>
+            <DialogDescription>
+              Choose which schedules to include and how many weeks to print, starting from{" "}
+              {weekLabel(monday)}.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="export-scope">Schedules</Label>
+              <Select
+                value={exportScope}
+                onValueChange={(v) => setExportScope(v as "current" | "all")}
+              >
+                <SelectTrigger id="export-scope">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="current">Current schedule only</SelectItem>
+                  <SelectItem value="all">Amalgamated (all schedule types)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="export-weeks">Weeks to include</Label>
+              <Input
+                id="export-weeks"
+                type="number"
+                min={1}
+                max={26}
+                value={exportWeeks}
+                onChange={(e) => setExportWeeks(Number(e.target.value))}
+              />
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {[
+                  { label: "1 week", value: 1 },
+                  { label: "2 weeks", value: 2 },
+                  { label: "Month (4)", value: 4 },
+                  { label: "Season (8)", value: 8 },
+                ].map((preset) => (
+                  <Button
+                    key={preset.value}
+                    type="button"
+                    size="sm"
+                    variant={exportWeeks === preset.value ? "default" : "outline"}
+                    onClick={() => setExportWeeks(preset.value)}
+                  >
+                    {preset.label}
+                  </Button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Covers {weekLabel(monday)} through{" "}
+                {weekLabel(
+                  parseWeek(weekKey(addWeeks(monday, Math.max(Math.round(exportWeeks) || 1, 1) - 1))),
+                )}
+                .
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setExportOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={startExport}>Export PDF</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <ProgramsDialog open={managing} onOpenChange={setManaging} />
     </DndContext>

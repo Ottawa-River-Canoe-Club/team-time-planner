@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useSchedule } from "@/context/schedule-context";
-import { PROGRAM_SWATCHES, SCHEDULE_TYPES, slugify } from "@/lib/schedule-types";
+import { PROGRAM_SWATCHES, slugify } from "@/lib/schedule-types";
 
 function Swatches({
   value,
@@ -56,8 +56,19 @@ export function ProgramsDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const { programs, assignments, activeTypeId, addProgram, updateProgram, removeProgram } =
-    useSchedule();
+  const {
+    programs,
+    assignments,
+    activeTypeId,
+    scheduleTypes,
+    addScheduleType,
+    updateScheduleType,
+    removeScheduleType,
+    addProgram,
+    updateProgram,
+    removeProgram,
+  } = useSchedule();
+  const [typeName, setTypeName] = useState("");
   const [name, setName] = useState("");
   const [typeId, setTypeId] = useState(activeTypeId);
   const [color, setColor] = useState(PROGRAM_SWATCHES[4]!);
@@ -82,14 +93,82 @@ export function ProgramsDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Manage programs</DialogTitle>
+          <DialogTitle>Manage schedules &amp; programs</DialogTitle>
           <DialogDescription>
-            Rename programs, pick their colour, or remove ones you no longer run.
+            Add or remove schedule types, then rename programs, pick their colour, or remove ones
+            you no longer run.
           </DialogDescription>
         </DialogHeader>
 
+        <div className="rounded-lg border border-border p-3">
+          <Label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Schedule types
+          </Label>
+          <div className="mt-2 space-y-2">
+            {scheduleTypes.map((t) => (
+              <div key={t.id} className="flex items-center gap-2">
+                <Input
+                  value={t.name}
+                  aria-label={`${t.name} name`}
+                  onChange={(e) => updateScheduleType(t.id, { name: e.target.value })}
+                  className="h-8"
+                />
+                <span className="w-24 shrink-0 text-right text-[11px] text-muted-foreground">
+                  {programs.filter((p) => p.typeId === t.id).length} rows
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label={`Delete ${t.name}`}
+                  className="shrink-0 text-destructive hover:text-destructive"
+                  onClick={() => {
+                    removeScheduleType(t.id);
+                    toast.success(`${t.name} deleted`);
+                  }}
+                >
+                  <Trash2 className="size-4" />
+                </Button>
+              </div>
+            ))}
+            {scheduleTypes.length === 0 && (
+              <p className="rounded-md border border-dashed border-border p-3 text-center text-xs text-muted-foreground">
+                No schedule types yet.
+              </p>
+            )}
+            <div className="flex items-center gap-2 pt-1">
+              <Input
+                value={typeName}
+                placeholder="e.g. Regatta Weekend"
+                aria-label="New schedule type"
+                onChange={(e) => setTypeName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key !== "Enter") return;
+                  if (!typeName.trim()) return;
+                  addScheduleType(typeName);
+                  setTypeName("");
+                }}
+                className="h-8"
+              />
+              <Button
+                size="sm"
+                onClick={() => {
+                  if (!typeName.trim()) {
+                    toast.error("Give the schedule type a name.");
+                    return;
+                  }
+                  addScheduleType(typeName);
+                  toast.success(`${typeName.trim()} added`);
+                  setTypeName("");
+                }}
+              >
+                <Plus className="size-4" /> Add
+              </Button>
+            </div>
+          </div>
+        </div>
+
         <div className="max-h-[50vh] space-y-3 overflow-y-auto pr-1">
-          {SCHEDULE_TYPES.map((t) => (
+          {scheduleTypes.map((t) => (
             <div key={t.id} className="space-y-3">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                 {t.name}
@@ -161,7 +240,7 @@ export function ProgramsDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {SCHEDULE_TYPES.map((t) => (
+                {scheduleTypes.map((t) => (
                   <SelectItem key={t.id} value={t.id}>
                     {t.name}
                   </SelectItem>

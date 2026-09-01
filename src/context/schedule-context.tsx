@@ -5,6 +5,7 @@ import type {
   Program,
   ProgramId,
   ProgramWeek,
+  ScheduleType,
   Staff,
   WeekKey,
 } from "@/lib/schedule-types";
@@ -16,6 +17,11 @@ export type ScheduleContextValue = {
   programWeeks: Record<string, ProgramWeek>;
   currentStaffId: string;
   setCurrentStaffId: (id: string) => void;
+  /** All schedule types (operational areas) */
+  scheduleTypes: ScheduleType[];
+  addScheduleType: (name: string) => void;
+  updateScheduleType: (id: string, patch: Partial<Omit<ScheduleType, "id">>) => void;
+  removeScheduleType: (id: string) => void;
   /** Currently selected schedule type (operational area) */
   activeTypeId: string;
   setActiveTypeId: (id: string) => void;

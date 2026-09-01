@@ -8,7 +8,7 @@ export type ScheduleType = {
   name: string;
 };
 
-export const SCHEDULE_TYPES: ScheduleType[] = [
+export const DEFAULT_SCHEDULE_TYPES: ScheduleType[] = [
   { id: "camp", name: "Camp Schedule" },
   { id: "dock", name: "Dock Duty" },
 ];
