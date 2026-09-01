@@ -81,8 +81,13 @@ export function ProgramsDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3">
-          {programs.map((p) => {
+        <div className="max-h-[50vh] space-y-3 overflow-y-auto pr-1">
+          {SCHEDULE_TYPES.map((t) => (
+            <div key={t.id} className="space-y-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                {t.name}
+              </p>
+          {programs.filter((p) => p.typeId === t.id).map((p) => {
             const used = assignments.filter((a) => a.programId === p.id).length;
             return (
               <div key={p.id} className="rounded-lg border border-border p-3">
