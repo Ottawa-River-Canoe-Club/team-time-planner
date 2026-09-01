@@ -11,7 +11,9 @@ import {
 } from "@/components/ui/select";
 import { useSchedule } from "@/context/schedule-context";
 import {
+  DAY_LABELS,
   chipStyle,
+
   metaKey,
   parseWeek,
   programById,
