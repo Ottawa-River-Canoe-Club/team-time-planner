@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -14,7 +14,16 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/core";
 import { addWeeks } from "date-fns";
-import { ChevronLeft, ChevronRight, Eraser, Palette, Search, Trash2 } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Eraser,
+  FileDown,
+  Loader2,
+  Palette,
+  Search,
+  Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -28,7 +37,14 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -38,8 +54,10 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useSchedule } from "@/context/schedule-context";
+import { exportNodesToPdf } from "@/lib/export-pdf";
 import {
   DAY_LABELS,
+  SCHEDULE_TYPES,
   STAFF_ROLES,
   chipStyle,
   parseWeek,
@@ -52,6 +70,7 @@ import {
 import { StaffCard } from "./staff-card";
 import { RosterGrid } from "./roster-grid";
 import { ProgramsDialog } from "./programs-dialog";
+import { ExportSheet } from "./export-sheet";
 
 /** Prefer a day cell under the pointer over anything else. */
 const collisionDetection: CollisionDetection = (args) => {
@@ -62,13 +81,24 @@ const collisionDetection: CollisionDetection = (args) => {
 };
 
 export function ScheduleBoard() {
-  const { staff, programs, assignments, addAssignment, clearWeek, clearAll } = useSchedule();
+  const {
+    staff,
+    programs,
+    assignments,
+    activeTypeId,
+    setActiveTypeId,
+    addAssignment,
+    clearWeek,
+    clearAll,
+  } = useSchedule();
   const [week, setWeek] = useState<string>(() => weekKey(new Date()));
   const [query, setQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [managing, setManaging] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [dragLabel, setDragLabel] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const exportRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -134,6 +164,24 @@ export function ScheduleBoard() {
     }
   };
 
+
+  const runExport = async (mode: "current" | "all") => {
+    const types = mode === "current" ? SCHEDULE_TYPES.filter((t) => t.id === activeTypeId) : SCHEDULE_TYPES;
+    const nodes = types
+      .map((t) => exportRefs.current[t.id])
+      .filter((n): n is HTMLDivElement => Boolean(n));
+    if (nodes.length === 0) return;
+    setExporting(true);
+    try {
+      const suffix = mode === "current" ? activeTypeId : "all-schedules";
+      await exportNodesToPdf(nodes, `roster-${week}-${suffix}.pdf`);
+      toast.success("PDF exported.");
+    } catch {
+      toast.error("Could not generate the PDF.");
+    } finally {
+      setExporting(false);
+    }
+  };
 
   return (
     <DndContext
@@ -273,12 +321,32 @@ export function ScheduleBoard() {
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" disabled={exporting}>
+                  {exporting ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <FileDown className="size-4" />
+                  )}
+                  Export to PDF
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem onSelect={() => void runExport("current")}>
+                  Export current schedule
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => void runExport("all")}>
+                  Export amalgamated schedule
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <span className="text-xs text-muted-foreground">
               {filled} assignment{filled === 1 ? "" : "s"} · {people} staff
             </span>
 
             <div className="ml-auto flex flex-wrap items-center gap-2">
-              {programs.map((p) => (
+              {programs.filter((p) => p.typeId === activeTypeId).map((p) => (
                 <span
                   key={p.id}
                   style={chipStyle(p.color)}
@@ -295,10 +363,33 @@ export function ScheduleBoard() {
             </div>
           </div>
 
+          <Tabs value={activeTypeId} onValueChange={setActiveTypeId}>
+            <TabsList>
+              {SCHEDULE_TYPES.map((t) => (
+                <TabsTrigger key={t.id} value={t.id}>
+                  {t.name}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+
           <div className="overflow-x-auto pb-2">
-            <RosterGrid week={week} />
+            <RosterGrid key={activeTypeId} week={week} typeId={activeTypeId} />
           </div>
         </section>
+      </div>
+
+      <div aria-hidden className="pointer-events-none fixed left-[-20000px] top-0 opacity-100">
+        {SCHEDULE_TYPES.map((t) => (
+          <div
+            key={t.id}
+            ref={(node) => {
+              exportRefs.current[t.id] = node;
+            }}
+          >
+            <ExportSheet week={week} typeId={t.id} typeName={t.name} />
+          </div>
+        ))}
       </div>
 
       <DragOverlay dropAnimation={null}>
