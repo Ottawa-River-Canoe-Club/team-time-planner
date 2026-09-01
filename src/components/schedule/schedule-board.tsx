@@ -138,7 +138,7 @@ export function ScheduleBoard() {
             <div>
               <h2 className="text-sm font-semibold text-foreground">Staff</h2>
               <p className="text-xs text-muted-foreground">
-                Drag someone into a role slot for this week.
+                Drag someone into a program's day cell for this week.
               </p>
             </div>
 
@@ -192,7 +192,7 @@ export function ScheduleBoard() {
                 unassignOver && "border-destructive bg-destructive/10 text-destructive",
               )}
             >
-              <Trash2 className="size-3.5 shrink-0" aria-hidden /> Clear a slot with its × button
+              <Trash2 className="size-3.5 shrink-0" aria-hidden /> Remove someone with the × on their card
             </div>
           </div>
         </aside>
