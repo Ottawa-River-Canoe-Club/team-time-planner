@@ -5,18 +5,20 @@ import { ScheduleBoard } from "@/components/schedule/schedule-board";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Weekly Staff Schedule — Riverside Paddling Club" },
+      { title: "Weekly Roster — Riverside Paddling Club" },
       {
         name: "description",
         content:
-          "Drag-and-drop weekly staff scheduling for a community sports and paddling club: assign coaches, instructors and attendants across programs at a glance.",
+          "Drag-and-drop weekly summer camp roster: assign lead coaches, assistants and floaters to each program and track participant ratios at a glance.",
       },
-      { property: "og:title", content: "Weekly Staff Schedule — Riverside Paddling Club" },
+      { property: "og:title", content: "Weekly Roster — Riverside Paddling Club" },
       {
         property: "og:description",
         content:
-          "Replace the Excel matrix: drag staff onto a Monday–Sunday grid, colour-coded by program.",
+          "Replace the Excel matrix: one clean weekly roster of programs, role slots and participant ratios.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: Index,

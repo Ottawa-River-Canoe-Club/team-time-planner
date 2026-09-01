@@ -2,7 +2,6 @@ import { useMemo, useState, type ReactNode } from "react";
 import { ScheduleContext, type ScheduleContextValue } from "./schedule-context";
 import {
   DEFAULT_PROGRAMS,
-  DEFAULT_ROLE_SLOTS,
   STAFF,
   metaKey,
   seedRoster,
@@ -75,5 +74,3 @@ export function ScheduleProvider({ children }: { children: ReactNode }) {
 
   return <ScheduleContext.Provider value={value}>{children}</ScheduleContext.Provider>;
 }
-
-export { DEFAULT_ROLE_SLOTS };
