@@ -207,6 +207,10 @@ export function seedRoster(anchor: Date = new Date()) {
     [metaKey(nextWeek, "canoe-kids")]: { participants: 16, notes: "" },
     [metaKey(nextWeek, "youth-camps")]: { participants: 15, notes: "" },
     [metaKey(nextWeek, "intro-to-comp")]: { participants: 8, notes: "" },
+    [metaKey(thisWeek, "opening-shift")]: { participants: 0, notes: "Unlock boat house 7:30" },
+    [metaKey(thisWeek, "mid-day-shift")]: { participants: 0, notes: "" },
+    [metaKey(thisWeek, "closing-shift")]: { participants: 0, notes: "Life jackets counted nightly" },
+    [metaKey(thisWeek, "weekend-operations")]: { participants: 0, notes: "Rentals only" },
   };
 
   return { assignments, programWeeks };
