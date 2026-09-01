@@ -1,9 +1,22 @@
 import { addDays, addWeeks, differenceInCalendarWeeks, format, startOfWeek } from "date-fns";
 
 export type ProgramId = string;
+export type ScheduleTypeId = string;
+
+export type ScheduleType = {
+  id: ScheduleTypeId;
+  name: string;
+};
+
+export const SCHEDULE_TYPES: ScheduleType[] = [
+  { id: "camp", name: "Camp Schedule" },
+  { id: "dock", name: "Dock Duty" },
+];
 
 export type Program = {
   id: ProgramId;
+  /** Which schedule type (operational area) this row belongs to */
+  typeId: ScheduleTypeId;
   name: string;
   /** Short label used in the ratio readout, e.g. "Jrs" */
   short: string;
@@ -12,10 +25,14 @@ export type Program = {
 };
 
 export const DEFAULT_PROGRAMS: Program[] = [
-  { id: "junior-racing", name: "Junior Racing", short: "Jrs", color: "oklch(0.58 0.13 245)" },
-  { id: "canoe-kids", name: "Canoe Kids", short: "CK", color: "oklch(0.62 0.13 155)" },
-  { id: "youth-camps", name: "Youth Camps", short: "YC", color: "oklch(0.72 0.15 65)" },
-  { id: "intro-to-comp", name: "Intro to Comp", short: "ITC", color: "oklch(0.58 0.15 300)" },
+  { id: "junior-racing", typeId: "camp", name: "Junior Racing", short: "Jrs", color: "oklch(0.58 0.13 245)" },
+  { id: "canoe-kids", typeId: "camp", name: "Canoe Kids", short: "CK", color: "oklch(0.62 0.13 155)" },
+  { id: "youth-camps", typeId: "camp", name: "Youth Camps", short: "YC", color: "oklch(0.72 0.15 65)" },
+  { id: "intro-to-comp", typeId: "camp", name: "Intro to Comp", short: "ITC", color: "oklch(0.58 0.15 300)" },
+  { id: "opening-shift", typeId: "dock", name: "Opening Shift", short: "Open", color: "oklch(0.66 0.13 195)" },
+  { id: "mid-day-shift", typeId: "dock", name: "Mid-Day Shift", short: "Mid", color: "oklch(0.72 0.15 65)" },
+  { id: "closing-shift", typeId: "dock", name: "Closing Shift", short: "Close", color: "oklch(0.6 0.14 340)" },
+  { id: "weekend-operations", typeId: "dock", name: "Weekend Operations", short: "Wknd", color: "oklch(0.62 0.18 20)" },
 ];
 
 export const PROGRAM_SWATCHES = [
