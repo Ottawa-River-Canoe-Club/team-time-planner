@@ -109,7 +109,7 @@ export function ProgramsDialog({
                     className="shrink-0 text-destructive hover:text-destructive"
                     onClick={() => {
                       removeProgram(p.id);
-                      toast.success(`${p.name} deleted${used ? ` · ${used} slot(s) removed` : ""}`);
+                      toast.success(`${p.name} deleted${used ? ` · ${used} assignment(s) removed` : ""}`);
                     }}
                   >
                     <Trash2 className="size-4" />
@@ -117,7 +117,7 @@ export function ProgramsDialog({
                 </div>
                 <div className="mt-2 flex items-center justify-between gap-3">
                   <Swatches value={p.color} onChange={(c) => updateProgram(p.id, { color: c })} />
-                  <span className="text-[11px] text-muted-foreground">{used} slots</span>
+                  <span className="text-[11px] text-muted-foreground">{used} assignments</span>
                 </div>
               </div>
             );
