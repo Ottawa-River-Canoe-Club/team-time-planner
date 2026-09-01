@@ -49,7 +49,7 @@ export function ProgramsDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const { programs, shifts, addProgram, updateProgram, removeProgram } = useSchedule();
+  const { programs, slots, addProgram, updateProgram, removeProgram } = useSchedule();
   const [name, setName] = useState("");
   const [color, setColor] = useState(PROGRAM_SWATCHES[4]!);
 
@@ -64,7 +64,7 @@ export function ProgramsDialog({
       toast.error("A program with that name already exists.");
       return;
     }
-    addProgram({ id, name: trimmed, color });
+    addProgram({ id, name: trimmed, short: trimmed.slice(0, 3).toUpperCase(), color });
     setName("");
     toast.success(`${trimmed} added`);
   };
@@ -81,7 +81,7 @@ export function ProgramsDialog({
 
         <div className="space-y-3">
           {programs.map((p) => {
-            const used = shifts.filter((s) => s.program === p.id).length;
+            const used = slots.filter((s) => s.programId === p.id).length;
             return (
               <div key={p.id} className="rounded-lg border border-border p-3">
                 <div className="flex items-center gap-2">
@@ -96,6 +96,12 @@ export function ProgramsDialog({
                     onChange={(e) => updateProgram(p.id, { name: e.target.value })}
                     className="h-8"
                   />
+                  <Input
+                    value={p.short}
+                    aria-label={`${p.name} short label`}
+                    onChange={(e) => updateProgram(p.id, { short: e.target.value })}
+                    className="h-8 w-20"
+                  />
                   <Button
                     variant="ghost"
                     size="icon"
@@ -103,7 +109,7 @@ export function ProgramsDialog({
                     className="shrink-0 text-destructive hover:text-destructive"
                     onClick={() => {
                       removeProgram(p.id);
-                      toast.success(`${p.name} deleted${used ? ` · ${used} shift(s) removed` : ""}`);
+                      toast.success(`${p.name} deleted${used ? ` · ${used} slot(s) removed` : ""}`);
                     }}
                   >
                     <Trash2 className="size-4" />
@@ -111,7 +117,7 @@ export function ProgramsDialog({
                 </div>
                 <div className="mt-2 flex items-center justify-between gap-3">
                   <Swatches value={p.color} onChange={(c) => updateProgram(p.id, { color: c })} />
-                  <span className="text-[11px] text-muted-foreground">{used} shifts</span>
+                  <span className="text-[11px] text-muted-foreground">{used} slots</span>
                 </div>
               </div>
             );
