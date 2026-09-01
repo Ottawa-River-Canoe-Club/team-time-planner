@@ -122,15 +122,20 @@ export const weekdays = (monday: Date) => Array.from({ length: 5 }, (_, i) => ad
 
 /* -------------------------------- roster ---------------------------------- */
 
-export const DEFAULT_ROLE_SLOTS = ["Lead Coach", "Assistant", "Floater"];
+export const DAY_LABELS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"] as const;
+export const DAY_INDEXES = [0, 1, 2, 3, 4] as const;
+export type DayIndex = (typeof DAY_INDEXES)[number];
 
-export type RoleSlot = {
+export type Assignment = {
   id: string;
   week: WeekKey;
+  day: DayIndex;
   programId: ProgramId;
-  label: string;
-  staffId: string | null;
+  staffId: string;
 };
+
+export const cellId = (week: WeekKey, programId: ProgramId, day: number) =>
+  `${week}|${programId}|${day}`;
 
 export type ProgramWeek = {
   participants: number;
@@ -148,49 +153,25 @@ export function ratioLabel(participants: number, assigned: number) {
 export function seedRoster(anchor: Date = new Date()) {
   const thisWeek = weekKey(anchor);
   const nextWeek = weekKey(addWeeks(anchor, 1));
-  const slots: RoleSlot[] = [];
+  const assignments: Assignment[] = [];
   let n = 0;
-  const add = (week: WeekKey, programId: ProgramId, label: string, staffId: string | null) =>
-    slots.push({ id: `seed-${n++}`, week, programId, label, staffId });
+  const add = (week: WeekKey, programId: ProgramId, day: DayIndex, staffId: string) =>
+    assignments.push({ id: `seed-${n++}`, week, programId, day, staffId });
 
-  const rows: Array<[ProgramId, Array<[string, string | null]>]> = [
-    [
-      "junior-racing",
-      [
-        ["Lead Coach", "s1"],
-        ["Assistant", "s9"],
-        ["Floater", null],
-      ],
-    ],
-    [
-      "canoe-kids",
-      [
-        ["Lead Coach", "s3"],
-        ["Assistant", "s5"],
-        ["Floater", "s10"],
-      ],
-    ],
-    [
-      "youth-camps",
-      [
-        ["Lead Coach", "s4"],
-        ["Assistant", "s7"],
-        ["Floater", null],
-      ],
-    ],
-    [
-      "intro-to-comp",
-      [
-        ["Lead Coach", "s2"],
-        ["Assistant", null],
-        ["Floater", null],
-      ],
-    ],
+  const rows: Array<[ProgramId, string[]]> = [
+    ["junior-racing", ["s1", "s9"]],
+    ["canoe-kids", ["s3", "s5", "s10"]],
+    ["youth-camps", ["s4", "s7"]],
+    ["intro-to-comp", ["s2"]],
   ];
 
-  for (const [programId, entries] of rows) {
-    for (const [label, staffId] of entries) add(thisWeek, programId, label, staffId);
-    for (const [label] of entries) add(nextWeek, programId, label, null);
+  for (const [programId, people] of rows) {
+    for (const day of [0, 1, 2, 3, 4] as DayIndex[]) {
+      for (const staffId of people) {
+        if (day === 4 && people.length > 2) continue;
+        add(thisWeek, programId, day, staffId);
+      }
+    }
   }
 
   const programWeeks: Record<string, ProgramWeek> = {
@@ -207,5 +188,6 @@ export function seedRoster(anchor: Date = new Date()) {
     [metaKey(nextWeek, "intro-to-comp")]: { participants: 8, notes: "" },
   };
 
-  return { slots, programWeeks };
+  return { assignments, programWeeks };
 }
+
