@@ -1,19 +1,21 @@
-import { addDays, format, startOfWeek } from "date-fns";
+import { addDays, addWeeks, differenceInCalendarWeeks, format, startOfWeek } from "date-fns";
 
 export type ProgramId = string;
 
 export type Program = {
   id: ProgramId;
   name: string;
-  /** Any CSS color; used to derive block, chip and dot styles */
+  /** Short label used in the ratio readout, e.g. "Jrs" */
+  short: string;
+  /** Any CSS color; used to derive row, chip and dot styles */
   color: string;
 };
 
 export const DEFAULT_PROGRAMS: Program[] = [
-  { id: "canoe-kids", name: "Canoe Kids Camp", color: "oklch(0.58 0.13 245)" },
-  { id: "regattas", name: "Regattas", color: "oklch(0.72 0.15 65)" },
-  { id: "boat-rentals", name: "Boat Rentals", color: "oklch(0.62 0.13 155)" },
-  { id: "adult-masters", name: "Adult Masters", color: "oklch(0.58 0.15 300)" },
+  { id: "junior-racing", name: "Junior Racing", short: "Jrs", color: "oklch(0.58 0.13 245)" },
+  { id: "canoe-kids", name: "Canoe Kids", short: "CK", color: "oklch(0.62 0.13 155)" },
+  { id: "youth-camps", name: "Youth Camps", short: "YC", color: "oklch(0.72 0.15 65)" },
+  { id: "intro-to-comp", name: "Intro to Comp", short: "ITC", color: "oklch(0.58 0.15 300)" },
 ];
 
 export const PROGRAM_SWATCHES = [
@@ -30,6 +32,7 @@ export const PROGRAM_SWATCHES = [
 const FALLBACK_PROGRAM: Program = {
   id: "unknown",
   name: "Unassigned program",
+  short: "—",
   color: "oklch(0.55 0.02 260)",
 };
 
@@ -72,44 +75,12 @@ export type Staff = {
   role: StaffRole;
 };
 
-export type BlockId = "early" | "morning" | "afternoon" | "evening";
-
-export type TimeBlock = {
-  id: BlockId;
-  label: string;
-  hint: string;
-  start: string;
-  end: string;
-};
-
-export const TIME_BLOCKS: TimeBlock[] = [
-  { id: "early", label: "Early", hint: "6:00 – 9:00", start: "06:00", end: "09:00" },
-  { id: "morning", label: "Morning", hint: "9:00 – 12:00", start: "09:00", end: "12:00" },
-  { id: "afternoon", label: "Afternoon", hint: "12:00 – 17:00", start: "12:00", end: "17:00" },
-  { id: "evening", label: "Evening", hint: "17:00 – 21:00", start: "17:00", end: "21:00" },
-];
-
-export const blockById = (id: BlockId): TimeBlock =>
-  TIME_BLOCKS.find((b) => b.id === id) ?? (TIME_BLOCKS[0] as TimeBlock);
-
-export type Shift = {
-  id: string;
-  date: string; // yyyy-MM-dd
-  block: BlockId;
-  start: string; // HH:mm
-  end: string; // HH:mm
-  program: ProgramId;
-  staffId: string | null;
-  requiredRole?: StaffRole | null | undefined;
-  note?: string | undefined;
-};
-
 export const STAFF: Staff[] = [
   { id: "s1", name: "Ariane Boucher", role: "Head Coach" },
   { id: "s2", name: "Devon Clarke", role: "Head Coach" },
   { id: "s3", name: "Priya Raman", role: "Canoe Kids Instructor" },
   { id: "s4", name: "Marc Lévesque", role: "Canoe Kids Instructor" },
-  { id: "s5", name: "Jess Okonkwo", role: "Canoe Kids Instructor" },
+  { id: "s5", name: "Natalie Fournier", role: "Canoe Kids Instructor" },
   { id: "s6", name: "Tom Halvorsen", role: "Boat House Attendant" },
   { id: "s7", name: "Kaia Nguyen", role: "Boat House Attendant" },
   { id: "s8", name: "Ruby Fontaine", role: "Regatta Official" },
@@ -120,71 +91,121 @@ export const STAFF: Staff[] = [
 export const staffById = (staff: Staff[], id: string | null) =>
   id ? (staff.find((s) => s.id === id) ?? null) : null;
 
+/* ---------------------------------- weeks --------------------------------- */
+
+/** yyyy-MM-dd of the Monday that starts a roster week. */
+export type WeekKey = string;
+
 export const weekStart = (date: Date) => startOfWeek(date, { weekStartsOn: 1 });
+export const weekKey = (date: Date): WeekKey => format(weekStart(date), "yyyy-MM-dd");
+export const parseWeek = (key: WeekKey) => {
+  const [y = 2026, m = 1, d = 1] = key.split("-").map(Number);
+  return new Date(y, m - 1, d);
+};
 
-export const weekDays = (start: Date) => Array.from({ length: 7 }, (_, i) => addDays(start, i));
+/** Summer season starts on the first Monday of July. */
+export const seasonStart = (year: number) => weekStart(new Date(year, 6, 7));
 
-export const dateKey = (d: Date) => format(d, "yyyy-MM-dd");
-
-export function toMinutes(time: string) {
-  const [h = 0, m = 0] = time.split(":").map(Number);
-  return h * 60 + m;
+export function weekNumber(monday: Date) {
+  const start = seasonStart(monday.getFullYear());
+  return differenceInCalendarWeeks(monday, start, { weekStartsOn: 1 }) + 1;
 }
 
-export function formatTime(time: string) {
-  const [h = 0, m = 0] = time.split(":").map(Number);
-  const suffix = h >= 12 ? "pm" : "am";
-  const hour = h % 12 === 0 ? 12 : h % 12;
-  return m === 0 ? `${hour}${suffix}` : `${hour}:${String(m).padStart(2, "0")}${suffix}`;
+/** e.g. "Week 2: July 6 – July 10" (Monday to Friday of the camp week). */
+export function weekLabel(monday: Date) {
+  const range = `${format(monday, "MMMM d")} – ${format(addDays(monday, 4), "MMMM d")}`;
+  const n = weekNumber(monday);
+  return n >= 1 && n <= 12 ? `Week ${n}: ${range}` : `Off-season: ${range}`;
 }
 
-export function overlaps(a: Shift, b: Shift) {
-  if (a.date !== b.date) return false;
-  return toMinutes(a.start) < toMinutes(b.end) && toMinutes(b.start) < toMinutes(a.end);
+export const weekdays = (monday: Date) => Array.from({ length: 5 }, (_, i) => addDays(monday, i));
+
+/* -------------------------------- roster ---------------------------------- */
+
+export const DEFAULT_ROLE_SLOTS = ["Lead Coach", "Assistant", "Floater"];
+
+export type RoleSlot = {
+  id: string;
+  week: WeekKey;
+  programId: ProgramId;
+  label: string;
+  staffId: string | null;
+};
+
+export type ProgramWeek = {
+  participants: number;
+  notes: string;
+};
+
+export const metaKey = (week: WeekKey, programId: ProgramId) => `${week}|${programId}`;
+
+export function ratioLabel(participants: number, assigned: number) {
+  if (assigned === 0) return participants > 0 ? "no staff assigned" : "—";
+  return `${(participants / assigned).toFixed(1)} per staff`;
 }
 
-/** Seed a realistic week of shifts anchored to the current Monday. */
-export function seedShifts(anchor: Date = new Date()): Shift[] {
-  const start = weekStart(anchor);
-  const d = (i: number) => dateKey(addDays(start, i));
-  const rows: Array<[number, BlockId, ProgramId, string | null, string?]> = [
-    [0, "morning", "canoe-kids", "s3", "Bring safety boat keys"],
-    [0, "morning", "canoe-kids", "s4"],
-    [0, "afternoon", "boat-rentals", "s6"],
-    [0, "evening", "adult-masters", "s1"],
-    [1, "early", "adult-masters", "s2", "Open the gate at 5:45"],
-    [1, "morning", "canoe-kids", "s5"],
-    [1, "afternoon", "boat-rentals", "s7"],
-    [1, "afternoon", "canoe-kids", null],
-    [2, "morning", "canoe-kids", "s3"],
-    [2, "afternoon", "boat-rentals", "s6"],
-    [2, "evening", "adult-masters", "s1"],
-    [3, "early", "adult-masters", "s2"],
-    [3, "morning", "canoe-kids", "s4"],
-    [3, "afternoon", "boat-rentals", null],
-    [4, "morning", "canoe-kids", "s5"],
-    [4, "afternoon", "boat-rentals", "s7"],
-    [4, "evening", "regattas", "s8", "Set course buoys for Saturday"],
-    [5, "early", "regattas", "s8"],
-    [5, "morning", "regattas", "s9"],
-    [5, "morning", "regattas", "s10", "Safety boat on the water all morning"],
-    [5, "afternoon", "boat-rentals", "s6"],
-    [6, "morning", "boat-rentals", "s7"],
-    [6, "afternoon", "adult-masters", "s1"],
-    [6, "afternoon", "boat-rentals", null],
+/** Seed the current and next week so the board is never empty. */
+export function seedRoster(anchor: Date = new Date()) {
+  const thisWeek = weekKey(anchor);
+  const nextWeek = weekKey(addWeeks(anchor, 1));
+  const slots: RoleSlot[] = [];
+  let n = 0;
+  const add = (week: WeekKey, programId: ProgramId, label: string, staffId: string | null) =>
+    slots.push({ id: `seed-${n++}`, week, programId, label, staffId });
+
+  const rows: Array<[ProgramId, Array<[string, string | null]>]> = [
+    [
+      "junior-racing",
+      [
+        ["Lead Coach", "s1"],
+        ["Assistant", "s9"],
+        ["Floater", null],
+      ],
+    ],
+    [
+      "canoe-kids",
+      [
+        ["Lead Coach", "s3"],
+        ["Assistant", "s5"],
+        ["Floater", "s10"],
+      ],
+    ],
+    [
+      "youth-camps",
+      [
+        ["Lead Coach", "s4"],
+        ["Assistant", "s7"],
+        ["Floater", null],
+      ],
+    ],
+    [
+      "intro-to-comp",
+      [
+        ["Lead Coach", "s2"],
+        ["Assistant", null],
+        ["Floater", null],
+      ],
+    ],
   ];
 
-  return rows.map(([day, block, program, staffId, note], i) => {
-    const b = blockById(block);
-    return {
-      id: `seed-${i}`,
-      date: d(day),
-      block,
-      start: b.start,
-      end: b.end,
-      program,
-      staffId,
-      note,
-    };
-  });
+  for (const [programId, entries] of rows) {
+    for (const [label, staffId] of entries) add(thisWeek, programId, label, staffId);
+    for (const [label] of entries) add(nextWeek, programId, label, null);
+  }
+
+  const programWeeks: Record<string, ProgramWeek> = {
+    [metaKey(thisWeek, "junior-racing")]: {
+      participants: 9,
+      notes: "Sarah half days T/Th/F",
+    },
+    [metaKey(thisWeek, "canoe-kids")]: { participants: 14, notes: "Evan friday fill in" },
+    [metaKey(thisWeek, "youth-camps")]: { participants: 18, notes: "" },
+    [metaKey(thisWeek, "intro-to-comp")]: { participants: 6, notes: "Bring safety boat keys" },
+    [metaKey(nextWeek, "junior-racing")]: { participants: 11, notes: "" },
+    [metaKey(nextWeek, "canoe-kids")]: { participants: 16, notes: "" },
+    [metaKey(nextWeek, "youth-camps")]: { participants: 15, notes: "" },
+    [metaKey(nextWeek, "intro-to-comp")]: { participants: 8, notes: "" },
+  };
+
+  return { slots, programWeeks };
 }
